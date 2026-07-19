@@ -176,31 +176,25 @@
   .no-match{padding:24px;text-align:center;color:var(--muted);font-size:.9rem}
   .empty{color:var(--muted);font-size:.88rem;text-align:center;padding:22px 8px}
 
-  /* ---------- print / PDF ---------- */
-  #printArea{display:none}
-  @media print{
-    body *{visibility:hidden}
-    #printArea, #printArea *{visibility:visible}
-    #printArea{display:block;position:absolute;inset:0;background:#fff;color:#000;
-      font-family:Georgia,"Times New Roman",serif;padding:24px}
-    .p-head{display:flex;justify-content:space-between;align-items:flex-start;
-      border-bottom:3px solid #e08a1e;padding-bottom:12px;margin-bottom:16px}
-    .p-head .logo{font-size:22px;font-weight:bold;letter-spacing:-.5px}
-    .p-head .logo span{color:#e08a1e}
-    .p-head .contact{text-align:right;font-size:11px;line-height:1.5;color:#444}
-    .p-meta{font-size:12px;line-height:1.6;margin-bottom:14px;color:#222}
-    .p-title{font-size:15px;font-weight:bold;margin:14px 0 8px}
-    table.p-tbl{width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:6px}
-    .p-tbl th{background:#f3ede2;text-align:left;padding:6px 8px;border:1px solid #ccc;font-size:10.5px;
-      text-transform:uppercase;letter-spacing:.03em}
-    .p-tbl td{padding:6px 8px;border:1px solid #ccc;vertical-align:top}
-    .p-tbl td.r{text-align:right;white-space:nowrap}
-    .p-room{background:#faf7f0;font-weight:bold}
-    .p-note{font-style:italic;color:#555;font-size:10.5px}
-    .p-totals{margin-top:10px;font-size:13px;text-align:right;line-height:1.8}
-    .p-totals b{font-size:16px}
-    .p-foot{margin-top:22px;font-size:10px;color:#666;border-top:1px solid #ccc;padding-top:8px;line-height:1.6}
-  }
+  /* ---------- print / PDF (captured off-screen via html2canvas, not window.print) ---------- */
+  #printArea{position:fixed;left:-9999px;top:0;width:780px;background:#fff;color:#000;
+    font-family:Georgia,"Times New Roman",serif;padding:28px;z-index:-1}
+  .p-head{display:flex;justify-content:space-between;align-items:flex-start;
+    border-bottom:3px solid #e08a1e;padding-bottom:12px;margin-bottom:16px}
+  .p-head .logo{font-size:24px;font-weight:bold;letter-spacing:-.5px}
+  .p-head .logo span{color:#e08a1e}
+  .p-head .contact{text-align:right;font-size:12px;line-height:1.5;color:#444}
+  .p-meta{font-size:13px;line-height:1.6;margin-bottom:16px;color:#222}
+  .p-title{font-size:16px;font-weight:bold;margin:16px 0 8px}
+  table.p-tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:8px}
+  .p-tbl th{background:#f3ede2;text-align:left;padding:7px 9px;border:1px solid #ccc;font-size:11px;
+    text-transform:uppercase;letter-spacing:.03em}
+  .p-tbl td{padding:7px 9px;border:1px solid #ccc;vertical-align:top}
+  .p-tbl td.r{text-align:right;white-space:nowrap}
+  .p-room{background:#faf7f0;font-weight:bold}
+  .p-totals{margin-top:12px;font-size:14px;text-align:right;line-height:1.8}
+  .p-totals b{font-size:18px}
+  .p-foot{margin-top:24px;font-size:11px;color:#666;border-top:1px solid #ccc;padding-top:9px;line-height:1.6}
 </style>
 </head>
 <body>
@@ -224,7 +218,7 @@
      "flat" → Довжина+Ширина → Д×Ш
      "len"  → тільки Довжина (м.п.)
    ===================================================================== */
-const PRICE = [
+const DEFAULT_PRICE = [
   {cat:"Сантехніка", items:[
     {n:"Заміна бачка унітазу", p:350, u:"шт", t:"pcs"},
     {n:"Заміна механізму зливу", p:300, u:"шт", t:"pcs"},
@@ -397,6 +391,12 @@ const store = {
 const uid = ()=> Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 const fmt = n => (Math.round(n*100)/100).toLocaleString("uk-UA");
 
+/* ---------- прайс: редагована копія, живе в localStorage, DEFAULT_PRICE — тільки "заводський" стартовий набір ---------- */
+let PRICE = store.get("vb_price");
+if(!PRICE || !PRICE.length){ PRICE = JSON.parse(JSON.stringify(DEFAULT_PRICE)); }
+function savePrice(){ store.set("vb_price", PRICE); }
+savePrice();
+
 /* ---------- тема ---------- */
 const root = document.documentElement;
 function applyTheme(t){ root.setAttribute("data-theme", t); store.set("vb_theme", t); }
@@ -499,7 +499,7 @@ function askText(title, placeholder, initial, cb){
   inp.onkeydown=e=>{ if(e.key==="Enter") done(); };
   sheet.querySelector("#dlgCancel").onclick=closeAll;
   overlay.classList.add("open"); sheet.classList.add("open");
-  setTimeout(()=>{ inp.focus(); inp.select(); },250);
+  setTimeout(()=>{ if(document.body.contains(inp)){ inp.focus(); inp.select(); } },250);
 }
 function askConfirm(msg, cb){
   sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
@@ -767,7 +767,7 @@ function openOpSheet(rm, after){
   };
   sheet.querySelector("#opCancel").onclick=closeAll;
   overlay.classList.add("open"); sheet.classList.add("open");
-  setTimeout(()=>nameI.focus(),250);
+  setTimeout(()=>{ if(document.body.contains(nameI)) nameI.focus(); },250);
 }
 
 function renderModChips(rm){
@@ -837,8 +837,11 @@ function updateFooter(){
    DRAWER — клієнти
    ===================================================================== */
 function openDrawer(){
-  drawer.innerHTML=`<h3>Vostrum<span>Bud</span></h3><div class="drawer-list" id="clList"></div>
-    <button class="add-btn" style="margin:8px 0 0">+ Новий клієнт</button>`;
+  drawer.innerHTML=`<h3>Vostrum<span>Bud</span></h3>
+    <button class="add-btn" style="margin:0 0 12px;border-style:solid;color:var(--accent-text);border-color:var(--accent)" id="goPrice">📋 Прайс — переглянути / редагувати</button>
+    <div class="drawer-list" id="clList"></div>
+    <button class="add-btn" id="goNewClient" style="margin:8px 0 0">+ Новий клієнт</button>`;
+  drawer.querySelector("#goPrice").onclick=()=>{ closeAll(); renderPriceList(); };
   const list=drawer.querySelector("#clList");
   data.clients.forEach((c,i)=>{
     const el=document.createElement("div");
@@ -858,7 +861,7 @@ function openDrawer(){
     };
     list.appendChild(el);
   });
-  drawer.querySelector(".add-btn").onclick=()=>{
+  drawer.querySelector("#goNewClient").onclick=()=>{
     drawer.classList.remove("open");
     askText("Новий клієнт","Ім'я клієнта або назва об'єкта","",(name)=>{
       const c={id:uid(),name,phone:"",address:"",status:0,discount:0,rooms:[]};
@@ -881,10 +884,12 @@ function closeAll(){
    ===================================================================== */
 function openWorkSheet(rm, idx){
   sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
-    <input class="search" id="wSearch" placeholder="Почни писати назву роботи…"></div>
+    <input class="search" id="wSearch" placeholder="Почни писати назву роботи…" style="margin-bottom:8px">
+    <button class="btn ghost" style="width:100%" id="wCustom">✎ Додати свою роботу вручну</button></div>
     <div class="sheet-list" id="wList"></div>`;
   const listEl=sheet.querySelector("#wList");
   const searchEl=sheet.querySelector("#wSearch");
+  sheet.querySelector("#wCustom").onclick=()=>openCustomWorkSheet(rm, idx);
   function renderOpts(q){
     listEl.innerHTML=""; let any=false;
     PRICE.forEach(g=>{
@@ -910,7 +915,44 @@ function openWorkSheet(rm, idx){
   renderOpts("");
   overlay.classList.add("open");
   sheet.classList.add("open");
-  setTimeout(()=>searchEl.focus(),250);
+  setTimeout(()=>{ if(document.body.contains(searchEl)) searchEl.focus(); },250);
+}
+
+/* SHEET — своя робота вручну: назва, ціна, тип виміру, опційно зберегти в прайс */
+function openCustomWorkSheet(rm, idx){
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 10px">Своя робота</div>
+    <div class="fld"><label>Назва роботи</label><input class="search" id="cwName" placeholder="Наприклад: Демонтаж старої стяжки"></div>
+    <div class="fld"><label>Ціна, грн</label><input class="search num" id="cwPrice" type="number" inputmode="decimal" min="0" step="1" placeholder="0"></div>
+    ${typeChipsHtml("pcs","cw")}
+    <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--text);margin:4px 4px 14px;cursor:pointer">
+      <input type="checkbox" id="cwSave" checked style="width:18px;height:18px"> Зберегти в прайс, щоб вибрати ще раз наступного разу
+    </label>
+    <div style="display:flex;gap:8px;padding:0 0 16px">
+      <button class="btn ghost" style="flex:1" id="cwCancel">Скасувати</button>
+      <button class="btn" style="flex:1" id="cwOk">Додати в кімнату</button>
+    </div></div>`;
+  const getType = wireTypeChips(sheet,"cw","pcs",()=>{});
+  sheet.querySelector("#cwOk").onclick=()=>{
+    const n=sheet.querySelector("#cwName").value.trim();
+    const p=parseFloat(sheet.querySelector("#cwPrice").value);
+    if(!n||!(p>0)){ toast("Впиши назву і ціну."); return; }
+    const t=getType();
+    const uMap={wall:"м²",flat:"м²",len:"м.п.",pcs:"шт"};
+    const item={n, p, u:uMap[t], t};
+    if(sheet.querySelector("#cwSave").checked){
+      let idxCat=PRICE.findIndex(g=>g.cat==="Власні роботи");
+      if(idxCat<0){ PRICE.push({cat:"Власні роботи", items:[]}); idxCat=PRICE.length-1; }
+      PRICE[idxCat].items.push(item);
+      savePrice();
+    }
+    rm.works[idx].w={...item};
+    rm.works[idx].manual="";
+    save(); closeAll(); renderRoom();
+  };
+  sheet.querySelector("#cwCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+  setTimeout(()=>{ const el=sheet.querySelector("#cwName"); if(el) el.focus(); },250);
 }
 
 /* SHEET — вибір модифікатора */
@@ -947,8 +989,254 @@ function openModSheet(rm){
 }
 
 /* =====================================================================
-   ЕКСПОРТ
+   ПРАЙС — перегляд, редагування, додавання, імпорт
    ===================================================================== */
+const TYPE_OPTS = [
+  {val:"wall", label:"м² — стіни кімнати", u:"м²"},
+  {val:"flat", label:"м² — підлога / стеля", u:"м²"},
+  {val:"len",  label:"м.п. — периметр кімнати", u:"м.п."},
+  {val:"pcs",  label:"шт — за одиницю", u:"шт"},
+];
+function typeChipsHtml(sel, idPrefix){
+  return `<div class="fld"><label>Як рахувати обсяг</label>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+    ${TYPE_OPTS.map(o=>`<span class="chip ${o.val===sel?"st0":""}" data-t="${o.val}" id="${idPrefix}_${o.val}">${o.label}</span>`).join("")}
+    </div></div>`;
+}
+function wireTypeChips(container, idPrefix, initial, onPick){
+  let cur = initial;
+  TYPE_OPTS.forEach(o=>{
+    const el = container.querySelector(`#${idPrefix}_${o.val}`);
+    el.onclick=()=>{
+      cur=o.val;
+      TYPE_OPTS.forEach(oo=> container.querySelector(`#${idPrefix}_${oo.val}`).className = "chip"+(oo.val===cur?" st0":""));
+      onPick(cur);
+    };
+  });
+  return ()=>cur;
+}
+
+function renderPriceList(){
+  app.innerHTML="";
+  app.appendChild(topbar("Прайс", `${PRICE.reduce((a,g)=>a+g.items.length,0)} позицій`, ()=>renderClient()));
+
+  const tools=document.createElement("div");
+  tools.className="card";
+  tools.innerHTML=`
+    <input class="search" id="pSearch" placeholder="Пошук по назві…" style="margin-bottom:10px">
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1" id="pAdd">+ Додати роботу</button>
+      <button class="btn ghost" style="flex:1" id="pImport">⇪ Імпорт з файлу</button>
+    </div>`;
+  app.appendChild(tools);
+  tools.querySelector("#pAdd").onclick=()=>openPriceItemSheet(null,null,()=>renderPriceList());
+  tools.querySelector("#pImport").onclick=()=>openImportSheet(()=>renderPriceList());
+
+  const listBox=document.createElement("div");
+  app.appendChild(listBox);
+  function draw(q){
+    listBox.innerHTML="";
+    let any=false;
+    PRICE.forEach((g,gi)=>{
+      const items=g.items.map((it,ii)=>({it,ii})).filter(x=>!q||x.it.n.toLowerCase().includes(q));
+      if(!items.length) return;
+      any=true;
+      const t=document.createElement("div"); t.className="sec-title"; t.textContent=g.cat;
+      listBox.appendChild(t);
+      items.forEach(({it,ii})=>{
+        const row=document.createElement("div");
+        row.className="card item";
+        row.innerHTML=`
+          <div class="info">
+            <b>${esc(it.n)}${it.coats?" · 2 шари":""}</b>
+            <small>${it.p*(it.coats||1)} грн / ${it.u}</small>
+          </div>
+          <button class="mini" title="Редагувати">✎</button>
+          <button class="mini danger" title="Видалити">✕</button>`;
+        row.querySelector(".mini:not(.danger)").onclick=()=>openPriceItemSheet(gi,ii,()=>{draw(q);});
+        row.querySelector(".danger").onclick=()=>{
+          askConfirm(`Видалити «${it.n}» з прайсу?`,()=>{
+            g.items.splice(ii,1);
+            if(!g.items.length) PRICE.splice(gi,1);
+            savePrice(); draw(q);
+          });
+        };
+        listBox.appendChild(row);
+      });
+    });
+    if(!any) listBox.innerHTML=`<div class="empty">Нічого не знайдено${q?` за «${esc(q)}»`:""}.</div>`;
+  }
+  draw("");
+  tools.querySelector("#pSearch").oninput=e=>draw(e.target.value.trim().toLowerCase());
+
+  footer.innerHTML=`<div class="footer-inner"><div class="footer-row">
+    <div class="total"><small>Категорій: ${PRICE.length}</small><b>${PRICE.reduce((a,g)=>a+g.items.length,0)} робіт</b></div>
+    <button class="btn" id="btnPBack">Готово</button>
+  </div></div>`;
+  document.getElementById("btnPBack").onclick=()=>renderClient();
+}
+
+/* створення / редагування однієї позиції прайсу (gi/ii=null → нова позиція) */
+function openPriceItemSheet(gi, ii, after){
+  const isNew = gi===null;
+  const cur = isNew? {n:"",p:"",u:"шт",t:"pcs",coats:0} : PRICE[gi].items[ii];
+  const catNames = PRICE.map(g=>g.cat);
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 10px">${isNew?"Нова робота":"Редагувати роботу"}</div>
+    <div class="fld"><label>Назва роботи</label><input class="search" id="iName" value="${esc(cur.n)}" placeholder="Наприклад: Демонтаж плитки"></div>
+    <div class="grid2">
+      <div class="fld"><label>Ціна, грн</label><input class="search num" id="iPrice" type="number" inputmode="decimal" min="0" step="1" value="${cur.p}"></div>
+      <div class="fld"><label>Категорія</label>
+        <select id="iCat" style="width:100%;border:none;background:var(--input);border-radius:10px;padding:11px 12px;font-size:.95rem;color:var(--text);min-height:44px">
+          ${catNames.map((c,i)=>`<option value="${i}" ${!isNew&&i===gi?"selected":""}>${esc(c)}</option>`).join("")}
+          <option value="new">+ Нова категорія…</option>
+        </select></div>
+    </div>
+    ${typeChipsHtml(cur.t,"it")}
+    <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--text);margin:4px 4px 14px;cursor:pointer">
+      <input type="checkbox" id="iCoats" ${cur.coats?"checked":""} style="width:18px;height:18px"> Рахувати у 2 шари (ціна автоматично ×2)
+    </label>
+    <div style="display:flex;gap:8px;padding:0 0 16px">
+      <button class="btn ghost" style="flex:1" id="iCancel">Скасувати</button>
+      <button class="btn" style="flex:1" id="iSave">Зберегти</button>
+    </div></div>`;
+  const getType = wireTypeChips(sheet,"it",cur.t,()=>{});
+  sheet.querySelector("#iCat").onchange=e=>{
+    if(e.target.value==="new"){
+      askText("Нова категорія","Напр. Електрика","",(name)=>{
+        PRICE.push({cat:name, items:[]});
+        openPriceItemSheet(gi,ii,after);
+        setTimeout(()=>{ sheet.querySelector("#iCat").value=String(PRICE.length-1); },0);
+      });
+    }
+  };
+  sheet.querySelector("#iSave").onclick=()=>{
+    const n=sheet.querySelector("#iName").value.trim();
+    const p=parseFloat(sheet.querySelector("#iPrice").value);
+    const catVal=sheet.querySelector("#iCat").value;
+    if(!n||!(p>0)||catVal==="new"){ toast("Впиши назву і ціну, обери категорію."); return; }
+    const t=getType();
+    const uMap={wall:"м²",flat:"м²",len:"м.п.",pcs:"шт"};
+    const item={n, p, u:uMap[t], t, coats: sheet.querySelector("#iCoats").checked?2:undefined};
+    if(!item.coats) delete item.coats;
+    const targetGi=parseInt(catVal,10);
+    if(!isNew){ PRICE[gi].items.splice(ii,1); if(!PRICE[gi].items.length) PRICE.splice(gi,1); }
+    const adjTargetGi = (!isNew && targetGi>gi) ? targetGi-1 : targetGi;
+    PRICE[adjTargetGi].items.push(item);
+    savePrice(); closeAll(); if(after) after();
+    toast(isNew?"Роботу додано в прайс":"Збережено");
+  };
+  sheet.querySelector("#iCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+  setTimeout(()=>{ const el=sheet.querySelector("#iName"); if(el) el.focus(); },250);
+}
+
+/* ---------- імпорт прайсу: вставка тексту або файл .docx / .txt / .csv ---------- */
+function parsePriceText(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const out=[];
+  const re = /^(.+?)\s*[—\-–]\s*(\d+(?:[.,]\d+)?)(?:\s*[-–]\s*(\d+(?:[.,]\d+)?))?\s*грн(?:\s*\/?\s*(?:метр\s*)?(квадратн\w*|погонн\w*|штук\w*))?/iu;
+  lines.forEach(line=>{
+    const m = line.match(re);
+    if(!m) return;
+    const name = m[1].replace(/[🔧🎨🏗️🧱🪟🪵🪞🏠🚪]/gu,"").trim();
+    if(!name || name.length<3) return;
+    let p1=parseFloat(m[2].replace(",", ".")), p2 = m[3]?parseFloat(m[3].replace(",", ".")):null;
+    const price = p2? Math.round((p1+p2)/2) : Math.round(p1);
+    let t="pcs", u="шт";
+    const unitWord=(m[4]||"").toLowerCase();
+    if(unitWord.startsWith("квадрат")){ t="flat"; u="м²"; }
+    else if(unitWord.startsWith("погон")){ t="len"; u="м.п."; }
+    out.push({n:name, p:price, u, t, sel:true});
+  });
+  return out;
+}
+function openImportSheet(after){
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 6px">Імпорт прайсу</div>
+    <div style="font-size:.8rem;color:var(--muted);padding:0 4px 10px;line-height:1.4">
+      Завантаж .docx / .txt файл, або відкрий Word/PDF на телефоні, виділи текст прайсу, скопіюй і встав нижче.
+    </div>
+    <input type="file" id="iFile" accept=".docx,.txt,.csv" style="margin:0 4px 10px;font-size:.85rem;color:var(--text)">
+    <textarea id="iText" placeholder="Встав сюди текст прайсу — рядки виду «Назва — 250 грн / метр квадратний»" style="width:100%;min-height:140px;border:none;background:var(--input);border-radius:10px;padding:11px 12px;font-size:.85rem;color:var(--text);font-family:inherit"></textarea>
+    <div style="display:flex;gap:8px;padding:12px 0 16px">
+      <button class="btn ghost" style="flex:1" id="iCancel">Скасувати</button>
+      <button class="btn" style="flex:1" id="iParse">Розпізнати рядки</button>
+    </div></div>`;
+  const fileEl=sheet.querySelector("#iFile"), textEl=sheet.querySelector("#iText");
+  fileEl.onchange=async ()=>{
+    const f=fileEl.files[0];
+    if(!f) return;
+    try{
+      if(f.name.toLowerCase().endsWith(".docx")){
+        if(!window.JSZip){ toast("Немає інтернету — не вдалось завантажити читач .docx."); return; }
+        const zip = await JSZip.loadAsync(f);
+        const xml = await zip.file("word/document.xml").async("string");
+        const withBreaks = xml.replace(/<\/w:p>/g,"\n").replace(/<[^>]+>/g,"");
+        const decoded = withBreaks.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+        textEl.value = decoded;
+      } else {
+        textEl.value = await f.text();
+      }
+      toast("Файл прочитано — перевір текст і тисни «Розпізнати рядки»");
+    }catch(e){ toast("Не вдалося прочитати файл."); }
+  };
+  sheet.querySelector("#iParse").onclick=()=>{
+    const items = parsePriceText(textEl.value);
+    if(!items.length){ toast("Не знайшов жодного рядка у форматі «Назва — ціна грн»."); return; }
+    openImportReviewSheet(items, after);
+  };
+  sheet.querySelector("#iCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+}
+function openImportReviewSheet(items, after){
+  let batchT = "pcs";
+  const catNames = PRICE.map(g=>g.cat);
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 4px">Знайдено ${items.length} позицій</div>
+    <div style="font-size:.8rem;color:var(--muted);padding:0 4px 10px">Зніми галочку з того, що не треба додавати. Тип виміру можна виправити пізніше в прайсі.</div>
+    <div class="grid2" style="padding:0 4px 10px">
+      <div class="fld" style="margin:0"><label>Категорія для нових</label>
+        <select id="rCat" style="width:100%;border:none;background:var(--input);border-radius:10px;padding:11px 12px;font-size:.9rem;color:var(--text);min-height:44px">
+          ${catNames.map((c,i)=>`<option value="${i}">${esc(c)}</option>`).join("")}
+          <option value="new" selected>+ Імпортовано</option>
+        </select></div>
+    </div></div>
+    <div class="sheet-list" id="rList"></div>
+    <div style="display:flex;gap:8px;padding:12px 16px calc(16px + env(safe-area-inset-bottom))">
+      <button class="btn ghost" style="flex:1" id="rCancel">Скасувати</button>
+      <button class="btn" style="flex:1" id="rOk">Додати обрані</button>
+    </div>`;
+  const list=sheet.querySelector("#rList");
+  items.forEach((it,i)=>{
+    const row=document.createElement("div"); row.className="opt";
+    row.innerHTML=`<label style="display:flex;align-items:center;gap:10px;flex:1;cursor:pointer">
+      <input type="checkbox" id="sel${i}" checked style="width:18px;height:18px;flex:none">
+      <span>${esc(it.n)}</span></label><span class="price">${it.p} грн</span>`;
+    row.querySelector(`#sel${i}`).onchange=e=>{ it.sel=e.target.checked; };
+    list.appendChild(row);
+  });
+  sheet.querySelector("#rOk").onclick=()=>{
+    const catVal=sheet.querySelector("#rCat").value;
+    let targetGi;
+    if(catVal==="new"){
+      let idx=PRICE.findIndex(g=>g.cat==="Імпортовано");
+      if(idx<0){ PRICE.push({cat:"Імпортовано", items:[]}); idx=PRICE.length-1; }
+      targetGi=idx;
+    } else targetGi=parseInt(catVal,10);
+    let n=0;
+    items.filter(it=>it.sel).forEach(it=>{
+      PRICE[targetGi].items.push({n:it.n, p:it.p, u:it.u, t:it.t}); n++;
+    });
+    savePrice(); closeAll();
+    toast(`Додано ${n} робіт у прайс`);
+    if(after) after();
+  };
+  sheet.querySelector("#rCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+}
+
+
 function buildLines(c){
   const rooms=[];
   c.rooms.forEach(rm=>{
@@ -958,20 +1246,20 @@ function buildLines(c){
       dims:parseFloat(wk.manual)>0? "вручну" : dimsStr,
       q:qtyOf(rm,wk), u:wk.w.u, p:unitPrice(rm,wk)*modMult(rm,wk), s:workSum(rm,wk)
     }));
-    if(lines.length) rooms.push({name:rm.name, mods:rm.mods, notes:rm.notes, lines, sum:roomSum(rm)});
+    if(lines.length) rooms.push({name:rm.name, notes:rm.notes, lines, sum:roomSum(rm)});
   });
   return rooms;
 }
 
-function exportPdf(){
-  const c=client();
+/* PDF — справжнє скачування файлу, без діалогу друку. Клієнту показуємо тільки фінальні
+   ціни: жодних модифікаторів чи відсотка націнки/знижки — вони вже "заховані" в цифрах. */
+function buildClientHtml(c){
   const rooms=buildLines(c);
-  if(!rooms.length){ toast("Немає жодної роботи з розмірами."); return; }
+  if(!rooms.length) return null;
   const d=new Date().toLocaleDateString("uk-UA");
-  const disc=parseFloat(c.discount)||0;
   let html=`
     <div class="p-head">
-      <div class="logo">Vostrum<span>Bud</span><div style="font-size:10px;font-weight:normal;color:#666;letter-spacing:.15em">БУДІВНИЦТВО ТА РЕМОНТ</div></div>
+      <div class="logo">Vostrum<span>Bud</span><div style="font-size:11px;font-weight:normal;color:#666;letter-spacing:.15em">БУДІВНИЦТВО ТА РЕМОНТ</div></div>
       <div class="contact">${COMPANY.phone?esc(COMPANY.phone)+"<br>":""}${d}</div>
     </div>
     <div class="p-meta">
@@ -982,34 +1270,63 @@ function exportPdf(){
     <table class="p-tbl">
       <tr><th style="width:44%">Робота</th><th>Розміри</th><th>Обсяг</th><th>Ціна, грн</th><th>Сума, грн</th></tr>`;
   rooms.forEach(rm=>{
-    html+=`<tr class="p-room"><td colspan="4">${esc(rm.name)}${rm.mods.length?` <span class="p-note">(${rm.mods.map(m=>esc(m.name)+" +"+m.pct+"%").join(", ")})</span>`:""}</td>
-      <td class="r">${fmt(rm.sum)}</td></tr>`;
+    html+=`<tr class="p-room"><td colspan="4">${esc(rm.name)}</td><td class="r">${fmt(rm.sum)}</td></tr>`;
     rm.lines.forEach(l=>{
       html+=`<tr><td>${esc(l.n)}</td><td>${l.dims}</td><td class="r">${fmt(l.q)} ${l.u}</td><td class="r">${fmt(l.p)}</td><td class="r">${fmt(l.s)}</td></tr>`;
     });
   });
   html+=`</table>
-    <div class="p-totals">
-      ${disc?`Разом: ${fmt(clientSubtotal(c))} грн<br>${disc<0?"Знижка":"Націнка"} ${Math.abs(disc)}%<br>`:""}
-      <b>До сплати: ${fmt(clientTotal(c))} грн</b>
-    </div>
+    <div class="p-totals"><b>До сплати: ${fmt(clientTotal(c))} грн</b></div>
     <div class="p-foot">${esc(COMPANY.note)}</div>`;
-  document.getElementById("printArea").innerHTML=html;
-  window.print();
+  return html;
+}
+
+async function exportPdf(){
+  const c=client();
+  const html=buildClientHtml(c);
+  if(!html){ toast("Немає жодної роботи з розмірами."); return; }
+  if(!window.jspdf || !window.html2canvas){
+    toast("Потрібен інтернет — бібліотека для PDF ще не завантажилась. Спробуй ще раз.");
+    return;
+  }
+  toast("Формую PDF…");
+  const area=document.getElementById("printArea");
+  area.innerHTML=html;
+  try{
+    const canvas = await html2canvas(area, {scale:2, backgroundColor:"#ffffff", useCORS:true});
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF("p","mm","a4");
+    const pageW=210, marginX=10, imgW=pageW-marginX*2;
+    const imgH=canvas.height*imgW/canvas.width;
+    const pageH=297, usableH=pageH-16;
+    let heightLeft=imgH, position=8;
+    const imgData=canvas.toDataURL("image/png");
+    doc.addImage(imgData,"PNG",marginX,position,imgW,imgH);
+    heightLeft-=usableH;
+    while(heightLeft>0){
+      position = heightLeft - imgH + 8;
+      doc.addPage();
+      doc.addImage(imgData,"PNG",marginX,position,imgW,imgH);
+      heightLeft-=usableH;
+    }
+    const fname=`Кошторис_${(c.name||"Клієнт").replace(/[^\wа-яіїєґА-ЯІЇЄҐ ]+/g,"").trim()||"VostrumBud"}.pdf`;
+    doc.save(fname);
+    toast("PDF збережено");
+  }catch(e){
+    toast("Не вдалося сформувати PDF. Спробуй ще раз.");
+  }
 }
 
 function copyText(){
   const c=client();
   const rooms=buildLines(c);
   if(!rooms.length){ toast("Немає жодної роботи з розмірами."); return; }
-  const disc=parseFloat(c.discount)||0;
   let t=`VostrumBud — кошторис\nЗамовник: ${c.name}\n${c.address?("Об'єкт: "+c.address+"\n"):""}\n`;
   rooms.forEach(rm=>{
-    t+=`— ${rm.name.toUpperCase()}${rm.mods.length?` (${rm.mods.map(m=>m.name+" +"+m.pct+"%").join(", ")})`:""}\n`;
+    t+=`— ${rm.name.toUpperCase()}\n`;
     rm.lines.forEach(l=>{ t+=`  ${l.n}: ${fmt(l.q)} ${l.u} × ${fmt(l.p)} = ${fmt(l.s)} грн\n`; });
     t+=`  Разом: ${fmt(rm.sum)} грн\n`;
   });
-  if(disc) t+=`\nРазом: ${fmt(clientSubtotal(c))} грн\n${disc<0?"Знижка":"Націнка"}: ${Math.abs(disc)}%`;
   t+=`\nДО СПЛАТИ: ${fmt(clientTotal(c))} грн\n\n${COMPANY.note}`;
   const done=()=>toast("Скопійовано — встав у Viber/Telegram.");
   if(navigator.clipboard&&navigator.clipboard.writeText){
@@ -1024,10 +1341,10 @@ function fallbackCopy(t,done){
 }
 
 renderClient();
-/* PWA: офлайн-робота і можливість пакування в APK */
-if("serviceWorker" in navigator){
-  try{ navigator.serviceWorker.register("sw.js"); }catch(e){}
-}
+if("serviceWorker" in navigator){ try{ navigator.serviceWorker.register("sw.js"); }catch(e){} }
 </script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </body>
 </html>
