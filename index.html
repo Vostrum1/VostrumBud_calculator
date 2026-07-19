@@ -391,6 +391,272 @@ const store = {
 const uid = ()=> Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 const fmt = n => (Math.round(n*100)/100).toLocaleString("uk-UA");
 
+
+/* =====================================================================
+   V2: БАЗА ЗВ'ЯЗАНИХ РОБІТ
+   t = шматок назви роботи-тригера (нижній регістр)
+   add = які роботи запропонувати (шматки назв з прайсу)
+   q = питання-розвилка (опційно): показується як перемикач,
+       addYes додаються тільки якщо відповідь "так"
+   ===================================================================== */
+const DEFAULT_LINKS = [
+  {t:"поклейка флізелінових", add:["ґрунтовка стін","шпаклівка стін під поклейку","плінтус пластиковий"]},
+  {t:"поклейка вінілових", add:["ґрунтовка стін","шпаклівка стін під поклейку","плінтус пластиковий"]},
+  {t:"рідкі шпалери", add:["ґрунтовка стін"], q:"Стіна темна або кольорова?", addYes:["фарбування стін водоемульсійною"]},
+  {t:"фарбування стін водоемульсійною", add:["ґрунтовка стін","шпаклівка стін під фарбування","шліфування стін"]},
+  {t:"фарбування стелі", add:["ґрунтовка стелі","шпаклівка стелі під фарбування","шліфування стелі"]},
+  {t:"шпаклівка стін під фарбування", add:["ґрунтовка стін","шліфування стін"]},
+  {t:"шпаклівка стелі під фарбування", add:["ґрунтовка стелі","шліфування стелі"]},
+  {t:"чистова стяжка", add:["ґрунтовка підлоги"], q:"Основа пилить або сипеться?", addYes:["ґрунтовка підлоги"]},
+  {t:"самовирівнююча", add:["ґрунтовка підлоги"]},
+  {t:"укладання ламінату", add:["підкладка під ламінат","плінтус пластиковий","монтаж декоративних порогів"]},
+  {t:"укладання лінолеуму", add:["плінтус пластиковий","монтаж декоративних порогів"]},
+  {t:"плитки на підлогу", add:["ґрунтовка стяжки під плитку","затирка швів плитки","монтаж керамічних плінтусів"]},
+  {t:"плитки на стіни", add:["затирка швів плитки","установка куточків"]},
+  {t:"монтаж гіпсокартону на стелю", add:["шпаклівка стелі з гк","ґрунтовка стелі"]},
+  {t:"монтаж гіпсокартону на стіну", add:["шпаклівка стін з гк","ґрунтовка стін"]},
+  {t:"монтаж укосів з гіпсокартону", add:["шпаклівка укосів","ґрунтовка укосів","фарбування відкосів"]},
+  {t:"монтаж одностулкового вікна", add:["підвіконня пластикове (до 400","установка зовнішнього відливу","герметизація шва","монтаж москітної сітки"]},
+  {t:"монтаж двостулкового вікна", add:["підвіконня пластикове (до 400","установка зовнішнього відливу","герметизація шва","монтаж москітної сітки"]},
+  {t:"монтаж тристулкового вікна", add:["підвіконня пластикове (від 400","установка зовнішнього відливу","герметизація шва","монтаж москітної сітки"]},
+  {t:"установка / заміна унітаза", add:["заміна гофри на унітазі"]},
+  {t:"установка акрилової ванни", add:["установка сифона"]},
+  {t:"установка сталевої ванни", add:["установка сифона"]},
+];
+
+/* =====================================================================
+   V2: БАЗА МАТЕРІАЛІВ
+   t = шматок назви роботи; mats = матеріали:
+     n=назва, u=одиниця, per=витрата на 1 од. роботи (м²/м.п./шт),
+     pack=фасовка (опц.), p=[дешевий, оптимальний, дорогий] ціна за одиницю (грн)
+   Норми — стандартні виробничі; ЦІНИ ОРІЄНТОВНІ, редагуй під свої магазини.
+   ===================================================================== */
+const DEFAULT_MATS = [
+  {t:"шпаклівка стін під фарбування", mats:[
+    {n:"Шпаклівка стартова", u:"кг", per:1.1, pack:25, p:[7,10,14]},
+    {n:"Шпаклівка фінішна", u:"кг", per:1.0, pack:25, p:[9,13,20]},
+    {n:"Абразивна сітка/наждак", u:"шт", per:0.08, p:[15,25,40]},
+  ]},
+  {t:"шпаклівка стелі під фарбування", mats:[
+    {n:"Шпаклівка стартова", u:"кг", per:1.1, pack:25, p:[7,10,14]},
+    {n:"Шпаклівка фінішна", u:"кг", per:1.2, pack:25, p:[9,13,20]},
+    {n:"Абразивна сітка/наждак", u:"шт", per:0.1, p:[15,25,40]},
+  ]},
+  {t:"шпаклівка стін під поклейку", mats:[
+    {n:"Шпаклівка фінішна", u:"кг", per:1.0, pack:25, p:[9,13,20]},
+  ]},
+  {t:"шпаклівка стін з гк", mats:[
+    {n:"Шпаклівка для швів (Fugen)", u:"кг", per:0.35, pack:25, p:[12,16,22]},
+    {n:"Стрічка для швів", u:"м.п.", per:1.3, p:[3,5,8]},
+    {n:"Шпаклівка фінішна", u:"кг", per:1.0, pack:25, p:[9,13,20]},
+  ]},
+  {t:"фарбування стін водоемульсійною", mats:[
+    {n:"Фарба інтер'єрна", u:"л", per:0.22, pack:10, p:[70,140,260]},
+  ]},
+  {t:"фарбування стелі", mats:[
+    {n:"Фарба для стелі", u:"л", per:0.25, pack:10, p:[70,140,260]},
+  ]},
+  {t:"ґрунтовка стін", mats:[
+    {n:"Ґрунтовка глибокого проникнення", u:"л", per:0.12, pack:10, p:[28,45,80]},
+  ]},
+  {t:"ґрунтовка стелі", mats:[
+    {n:"Ґрунтовка глибокого проникнення", u:"л", per:0.12, pack:10, p:[28,45,80]},
+  ]},
+  {t:"ґрунтовка підлоги", mats:[
+    {n:"Ґрунтовка глибокого проникнення", u:"л", per:0.15, pack:10, p:[28,45,80]},
+  ]},
+  {t:"ґрунтовка стяжки під плитку", mats:[
+    {n:"Ґрунтовка глибокого проникнення", u:"л", per:0.15, pack:10, p:[28,45,80]},
+  ]},
+  {t:"поклейка флізелінових", mats:[
+    {n:"Клей для флізелінових шпалер", u:"кг", per:0.035, pack:0.25, p:[400,600,900]},
+    {n:"Шпалери (рулон 1.06×10м = 10.6 м²)", u:"рулон", per:0.105, p:[350,700,1500]},
+  ]},
+  {t:"поклейка вінілових", mats:[
+    {n:"Клей для вінілових шпалер", u:"кг", per:0.04, pack:0.25, p:[400,600,900]},
+    {n:"Шпалери (рулон 1.06×10м = 10.6 м²)", u:"рулон", per:0.105, p:[350,700,1500]},
+  ]},
+  {t:"рідкі шпалери", mats:[
+    {n:"Рідкі шпалери (пакет ≈ 4 м²)", u:"пакет", per:0.27, p:[180,320,550]},
+    {n:"Ґрунтовка під рідкі шпалери", u:"л", per:0.15, pack:5, p:[60,90,140]},
+  ]},
+  {t:"чистова стяжка", mats:[
+    {n:"Суміш ЦПС (на 1 см шару)", u:"кг", per:20, pack:25, p:[4.2,5.5,7.5]},
+    {n:"Маяки 10мм (3м)", u:"шт", per:0.28, p:[35,55,85]},
+    {n:"Стартова суміш для кріплення маяків", u:"кг", per:0.5, pack:25, p:[7,10,14]},
+  ], note:"Витрату ЦПС множ на товщину в см (напр. 3.5 см → ×3.5)"},
+  {t:"самовирівнююча", mats:[
+    {n:"Самовирівнююча суміш (на 5 мм)", u:"кг", per:8, pack:25, p:[9,13,18]},
+    {n:"Голчастий валик (на об'єкт)", u:"шт", per:0.02, p:[150,250,400]},
+  ]},
+  {t:"плитки на підлогу", mats:[
+    {n:"Плитка (з запасом 10%)", u:"м²", per:1.1, p:[250,500,1200]},
+    {n:"Клей для плитки", u:"кг", per:4.5, pack:25, p:[6,9,14]},
+    {n:"Хрестики/СВП", u:"уп", per:0.02, p:[40,80,150]},
+    {n:"Затирка для швів", u:"кг", per:0.4, pack:2, p:[60,120,250]},
+  ]},
+  {t:"плитки на стіни", mats:[
+    {n:"Плитка (з запасом 10%)", u:"м²", per:1.1, p:[250,500,1200]},
+    {n:"Клей для плитки", u:"кг", per:4.0, pack:25, p:[6,9,14]},
+    {n:"Хрестики/СВП", u:"уп", per:0.02, p:[40,80,150]},
+    {n:"Затирка для швів", u:"кг", per:0.35, pack:2, p:[60,120,250]},
+  ]},
+  {t:"укладання ламінату", mats:[
+    {n:"Ламінат (з запасом 7%)", u:"м²", per:1.07, p:[280,450,900]},
+    {n:"Підкладка", u:"м²", per:1.05, p:[25,45,90]},
+  ]},
+  {t:"укладання лінолеуму", mats:[
+    {n:"Лінолеум (з запасом 7%)", u:"м²", per:1.07, p:[180,350,700]},
+    {n:"Двосторонній скотч/клей", u:"м.п.", per:0.6, p:[8,15,25]},
+  ]},
+  {t:"монтаж гіпсокартону на стелю", mats:[
+    {n:"Гіпсокартон стельовий 9.5мм (лист 3 м²)", u:"лист", per:0.37, p:[280,340,420]},
+    {n:"Профіль CD 60×27 (3м)", u:"шт", per:0.8, p:[85,120,170]},
+    {n:"Профіль UD 27×28 (3м)", u:"шт", per:0.25, p:[60,90,130]},
+    {n:"Підвіси прямі", u:"шт", per:1.4, p:[4,7,12]},
+    {n:"Саморізи по металу 25мм", u:"уп(100)", per:0.25, p:[45,65,95]},
+    {n:"Дюбелі 6×40", u:"уп(100)", per:0.1, p:[60,90,130]},
+  ]},
+  {t:"монтаж гіпсокартону на стіну", mats:[
+    {n:"Гіпсокартон стіновий 12.5мм (лист 3 м²)", u:"лист", per:0.37, p:[300,360,450]},
+    {n:"Профіль CD 60×27 (3м)", u:"шт", per:0.7, p:[85,120,170]},
+    {n:"Профіль UD 27×28 (3м)", u:"шт", per:0.3, p:[60,90,130]},
+    {n:"Підвіси прямі", u:"шт", per:1.2, p:[4,7,12]},
+    {n:"Саморізи по металу 25мм", u:"уп(100)", per:0.22, p:[45,65,95]},
+  ]},
+  {t:"шліфування стін", mats:[
+    {n:"Абразивна сітка №120-150", u:"шт", per:0.1, p:[15,25,40]},
+  ]},
+  {t:"шліфування стелі", mats:[
+    {n:"Абразивна сітка №120-150", u:"шт", per:0.12, p:[15,25,40]},
+  ]},
+  {t:"облаштування малярної сітки", mats:[
+    {n:"Склосітка/павутинка", u:"м²", per:1.1, p:[18,30,55]},
+    {n:"Клей для склополотна", u:"л", per:0.2, pack:10, p:[45,70,110]},
+  ]},
+  {t:"затирка швів плитки", mats:[
+    {n:"Затирка для швів", u:"кг", per:0.12, pack:2, p:[60,120,250]},
+  ]},
+  {t:"герметизація шва", mats:[
+    {n:"Піна монтажна професійна", u:"бал", per:0.12, p:[180,260,380]},
+    {n:"Герметик/Стиз", u:"туб", per:0.15, p:[90,150,250]},
+  ]},
+  {t:"плінтус пластиковий", mats:[
+    {n:"Плінтус пластиковий (планка 2.5м)", u:"шт", per:0.44, p:[65,110,190]},
+    {n:"Фурнітура (кути/заглушки), % від планок", u:"компл", per:0.15, p:[25,40,60]},
+  ]},
+  {t:"монтаж керамічних плінтусів", mats:[
+    {n:"Плінтус керамічний", u:"м.п.", per:1.05, p:[90,160,300]},
+    {n:"Клей для плитки", u:"кг", per:1.5, pack:25, p:[6,9,14]},
+  ]},
+];
+
+/* редаговані копії в пам'яті телефону */
+let LINKS = store.get("vb_links") || JSON.parse(JSON.stringify(DEFAULT_LINKS));
+let MATS  = store.get("vb_mats")  || JSON.parse(JSON.stringify(DEFAULT_MATS));
+function saveLinks(){ store.set("vb_links", LINKS); }
+function saveMats(){ store.set("vb_mats", MATS); }
+saveLinks(); saveMats();
+
+const TIER_NAMES = ["Дешевий","Оптимальний","Дорогий"];
+
+/* V2.1: норми часу — скільки одиниць роботи робить 1 людина за день (редаговано) */
+const DEFAULT_TIMES = [
+  {t:"шпаклівка стін", per:12},{t:"шпаклівка стелі", per:8},
+  {t:"фарбування стін", per:40},{t:"фарбування стелі", per:35},
+  {t:"ґрунтовка", per:100},{t:"ґрунтування", per:100},
+  {t:"шліфування", per:30},
+  {t:"плитки на підлогу", per:6},{t:"плитки на стіни", per:5},
+  {t:"укладання ламінату", per:25},{t:"укладання лінолеуму", per:40},
+  {t:"чистова стяжка", per:20},{t:"самовирівнююча", per:40},
+  {t:"гіпсокартону на стелю", per:10},{t:"гіпсокартону на стіну", per:12},
+  {t:"поклейка", per:20},{t:"рідкі шпалери", per:12},
+  {t:"плінтус", per:40},{t:"багет", per:30},{t:"молдинг", per:30},
+  {t:"укосів", per:8},{t:"затирка", per:30},
+];
+let TIMES = store.get("vb_times") || JSON.parse(JSON.stringify(DEFAULT_TIMES));
+function saveTimes(){ store.set("vb_times", TIMES); }
+saveTimes();
+function findTimeRule(workName){
+  const n = workName.toLowerCase();
+  return TIMES.find(r => n.includes(r.t));
+}
+/* сумарний час обєкта в людино-днях (+15% люфт) */
+function clientDays(c){
+  let days = 0;
+  c.rooms.forEach(rm=> rm.works.forEach(wk=>{
+    if(!wk.w) return;
+    const q = qtyOf(rm, wk); if(!(q>0)) return;
+    const tr = findTimeRule(wk.w.n);
+    if(tr && tr.per>0) days += q/tr.per;
+  }));
+  return days>0 ? Math.ceil(days*1.15*2)/2 : 0;
+}
+/* чи можлива механізація для роботи */
+function canMech(name){ return /фарбуван|шпаклів|ґрунт/i.test(name); }
+
+/* ---------- V2: звязані роботи та матеріали ---------- */
+function findLinkRule(workName){
+  const n = workName.toLowerCase();
+  return LINKS.find(r => n.includes(r.t));
+}
+function findWorkInPrice(namePart){
+  const q = namePart.toLowerCase();
+  for(const g of PRICE) for(const it of g.items)
+    if(it.n.toLowerCase().includes(q)) return it;
+  return null;
+}
+function findMatsRule(workName){
+  const n = workName.toLowerCase();
+  return MATS.find(r => n.includes(r.t));
+}
+function roomMaterials(rm, tier, markup, reserve){
+  const out = {};
+  rm.works.forEach(wk=>{
+    if(!wk.w) return;
+    const q = qtyOf(rm, wk);
+    if(!(q>0)) return;
+    const rule = findMatsRule(wk.w.n);
+    if(!rule) return;
+    const mechK = wk.mech ? 1.2 : 1;
+    rule.mats.forEach(m=>{
+      const amount = q * m.per * mechK * (1 + (reserve||0)/100);
+      const key = m.n + "|" + m.u;
+      if(!out[key]) out[key] = {n:m.n, u:m.u, amount:0, pack:m.pack||null, price:m.p[tier]};
+      out[key].amount += amount;
+    });
+  });
+  return Object.values(out).map(m=>{
+    const packs = m.pack ? Math.ceil(m.amount / m.pack) : null;
+    const buyQty = packs!==null ? packs*m.pack : Math.ceil(m.amount*100)/100;
+    const buy = buyQty * m.price;
+    return {...m, packs, buyQty, buy, client: buy*(1+(markup||0)/100)};
+  });
+}
+function clientMaterials(c){
+  const tier = (c.tier===undefined?1:c.tier), markup = parseFloat(c.matMarkup)||0, reserve = parseFloat(c.matReserve)||0;
+  const agg = {};
+  c.rooms.forEach(rm=>{
+    roomMaterials(rm, tier, markup, reserve).forEach(m=>{
+      const key = m.n+"|"+m.u;
+      if(!agg[key]) agg[key] = {...m};
+      else{
+        agg[key].amount += m.amount;
+        agg[key].buyQty += m.buyQty;
+        agg[key].buy += m.buy;
+        agg[key].client += m.client;
+        if(m.packs!==null) agg[key].packs = (agg[key].packs||0)+m.packs;
+      }
+    });
+  });
+  return Object.values(agg);
+}
+function matTotals(c){
+  if(c.useMats===false) return {buy:0, client:0, list:[]};
+  const list = clientMaterials(c);
+  return { buy: list.reduce((a,m)=>a+m.buy,0), client: list.reduce((a,m)=>a+m.client,0), list };
+}
+
 /* ---------- прайс: редагована копія, живе в localStorage, DEFAULT_PRICE — тільки "заводський" стартовий набір ---------- */
 let PRICE = store.get("vb_price");
 if(!PRICE || !PRICE.length){ PRICE = JSON.parse(JSON.stringify(DEFAULT_PRICE)); }
@@ -407,14 +673,22 @@ applyTheme(store.get("vb_theme") || (sysDark ? "dark" : "light"));
 /* ---------- стан ---------- */
 let data = store.get("vb_data") || {clients:[]};
 if(!data.clients.length){
-  data.clients.push({id:uid(), name:"Новий клієнт", phone:"", address:"", status:0, discount:0, rooms:[]});
+  data.clients.push({id:uid(), name:"Новий клієнт", phone:"", address:"", status:0, discount:0, rooms:[], createdAt:new Date().toISOString()});
 }
+data.clients.forEach(c=>{ if(!c.createdAt) c.createdAt = new Date().toISOString(); });
 let view = {clientId: data.clients[0].id, roomId: null};
 const save = ()=> store.set("vb_data", data);
 const client = ()=> data.clients.find(c=>c.id===view.clientId) || data.clients[0];
 const room = ()=> client().rooms.find(r=>r.id===view.roomId);
 
 const newRoom = (name)=>({id:uid(), name:name||"Кімната", d:{l:"",w:"",h:""}, notes:"", ops:[], works:[], mods:[]});
+const WEEKDAYS = ["неділя","понеділок","вівторок","середа","четвер","п'ятниця","субота"];
+function fmtDateTime(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2,"0"), mm=String(d.getMonth()+1).padStart(2,"0");
+  return `${dd}.${mm}.${d.getFullYear()}, ${WEEKDAYS[d.getDay()]}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+}
 const newWork = ()=>({w:null, manual:""});
 /* міграція старих даних */
 data.clients.forEach(c=>c.rooms.forEach(rm=>{
@@ -554,7 +828,25 @@ function renderClient(){
       <div class="fld"><label>Знижка / націнка, %</label><input id="cDisc" class="num" inputmode="numeric" type="number" step="1" value="${c.discount||""}" placeholder="0"></div>
     </div>
     <div class="fld"><label>Адреса об'єкта</label><input id="cAddr" value="${esc(c.address)}" placeholder="вул. …"></div>
-    <span class="chip st${c.status}" id="cStatus">● ${STATUSES[c.status]}</span>`;
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
+      <span class="chip st${c.status}" id="cStatus">● ${STATUSES[c.status]}</span>
+      <span style="flex:1"></span>
+      <a class="chip" id="mWa" style="text-decoration:none">WhatsApp</a>
+      <a class="chip" id="mVb" style="text-decoration:none">Viber</a>
+      <a class="chip" id="mTg" style="text-decoration:none">Telegram</a>
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);margin:0 4px 10px">Заведено: ${fmtDateTime(c.createdAt)}</div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;margin:2px 4px 10px;cursor:pointer">
+      <input type="checkbox" id="cUseMats" ${c.useMats===false?"":"checked"} style="width:18px;height:18px"> Рахувати матеріали (вимкни — буде тільки робота)
+    </label>
+    <div class="fld"><label>Матеріали — рівень цін</label>
+      <div style="display:flex;gap:6px">
+        ${TIER_NAMES.map((t,i)=>`<span class="chip ${i===(c.tier===undefined?1:c.tier)?"st0":""}" data-tier="${i}" style="flex:1;justify-content:center">${t}</span>`).join("")}
+      </div></div>
+    <div class="grid2">
+      <div class="fld" style="margin:0"><label>Націнка на матеріали, %</label><input id="cMarkup" class="num" type="number" inputmode="numeric" step="1" value="${c.matMarkup===undefined?15:c.matMarkup}" placeholder="15"></div>
+      <div class="fld" style="margin:0"><label>Резерв матеріалів, %</label><input id="cReserve" class="num" type="number" inputmode="numeric" step="1" value="${c.matReserve===undefined?10:c.matReserve}" placeholder="10"></div>
+    </div>`;
   info.querySelector("#cName").oninput = e=>{ c.name=e.target.value; save(); };
   info.querySelector("#cPhone").oninput = e=>{ c.phone=e.target.value; save(); };
   info.querySelector("#cAddr").oninput = e=>{ c.address=e.target.value; save(); };
@@ -563,7 +855,73 @@ function renderClient(){
     c.status=(c.status+1)%3; save();
     e.target.className=`chip st${c.status}`; e.target.textContent=`● ${STATUSES[c.status]}`;
   };
+  /* месенджери: чат за номером без збереження контакту */
+  const cleanPhone = ()=> (c.phone||"").replace(/[^\d+]/g,"").replace(/^0/,"+380").replace(/^380/,"+380");
+  const wireMsg=(id, urlFn)=>{
+    info.querySelector(id).onclick=(e)=>{
+      e.preventDefault();
+      const ph = cleanPhone();
+      if(!ph || ph.length<10){ toast("Впиши телефон клієнта вище."); return; }
+      window.open(urlFn(ph.replace("+","")), "_blank");
+    };
+  };
+  wireMsg("#mWa", p=>`https://wa.me/${p}`);
+  wireMsg("#mVb", p=>`viber://chat?number=%2B${p}`);
+  wireMsg("#mTg", p=>`https://t.me/+${p}`);
+  /* рівень цін матеріалів */
+  info.querySelectorAll("[data-tier]").forEach(chip=>{
+    chip.onclick=()=>{
+      c.tier = parseInt(chip.dataset.tier,10); save();
+      info.querySelectorAll("[data-tier]").forEach(ch=> ch.className="chip"+(parseInt(ch.dataset.tier,10)===c.tier?" st0":""));
+      renderMatBlock(); updateFooter();
+    };
+  });
+  info.querySelector("#cUseMats").onchange=e=>{ c.useMats=e.target.checked; save(); renderMatBlock(); updateFooter(); };
+  if(c.tier===undefined){ c.tier=1; }
+  if(c.matMarkup===undefined){ c.matMarkup=15; }
+  if(c.matReserve===undefined){ c.matReserve=10; }
+  info.querySelector("#cMarkup").oninput=e=>{ c.matMarkup=e.target.value; save(); renderMatBlock(); updateFooter(); };
+  info.querySelector("#cReserve").oninput=e=>{ c.matReserve=e.target.value; save(); renderMatBlock(); updateFooter(); };
   app.appendChild(info);
+
+  /* матеріали по обєкту */
+  const matWrap=document.createElement("div");
+  app.appendChild(matWrap);
+  function renderMatBlock(){
+    const mt = matTotals(c);
+    if(!mt.list.length){ matWrap.innerHTML=""; return; }
+    matWrap.innerHTML = `
+      <div class="sec-title">Матеріали по об'єкту · ${TIER_NAMES[c.tier===undefined?1:c.tier].toLowerCase()}</div>
+      <div class="card" style="padding:10px 12px">
+        ${mt.list.map(m=>`
+          <div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:.85rem">
+            <span style="flex:1">${esc(m.n)}</span>
+            <span style="color:var(--muted);white-space:nowrap">${m.packs!==null? m.packs+" уп ("+fmt(m.buyQty)+" "+m.u+")" : fmt(m.buyQty)+" "+m.u}</span>
+            <span style="font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums">${fmt(m.client)} грн</span>
+          </div>`).join("")}
+        <div style="display:flex;justify-content:space-between;padding:8px 0 2px;font-size:.9rem">
+          <span style="color:var(--muted)">Закупівля (для тебе):</span><b>${fmt(mt.buy)} грн</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.9rem">
+          <span style="color:var(--muted)">Для клієнта (з націнкою):</span><b style="color:var(--accent-text)">${fmt(mt.client)} грн</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.82rem;padding-top:2px">
+          <span style="color:var(--muted)">Твій заробіток на матеріалах:</span><b style="color:var(--ok)">${fmt(mt.client-mt.buy)} грн</b>
+        </div>
+      </div>`;
+  }
+  renderMatBlock();
+
+  /* орієнтовний час */
+  const timeWrap=document.createElement("div");
+  app.appendChild(timeWrap);
+  function renderTimeBlock(){
+    const dd = clientDays(c);
+    timeWrap.innerHTML = dd>0? `<div class="card" style="display:flex;justify-content:space-between;align-items:center;font-size:.9rem">
+      <span style="color:var(--muted)">⏱ Орієнтовний строк (1 людина, з люфтом 15%)</span>
+      <b>~${fmt(dd)} дн.</b></div>` : "";
+  }
+  renderTimeBlock();
 
   const st = document.createElement("div");
   st.className="sec-title"; st.textContent="Кімнати / приміщення";
@@ -607,9 +965,10 @@ function renderClient(){
   };
   app.appendChild(add);
 
+  const grand = ()=> clientTotal(c) + matTotals(c).client;
   footer.innerHTML=`<div class="footer-inner"><div class="footer-row">
-    <div class="total"><small>Разом по об'єкту${(parseFloat(c.discount)||0)?` (з ${c.discount}%)`:""}</small>
-      <b id="fTotal">${fmt(clientTotal(c))} <i>грн</i></b></div>
+    <div class="total"><small>Роботи + матеріали</small>
+      <b id="fTotal">${fmt(grand())} <i>грн</i></b></div>
     <button class="btn ghost" id="btnTxt">Текст</button>
     <button class="btn" id="btnPdf">PDF</button>
   </div></div>`;
@@ -799,10 +1158,15 @@ function workRow(rm, wk, idx){
       <div class="fld" style="margin:0"><label>${wk.w.t==="pcs"?"Кількість, шт (порожньо = 1)":"Обсяг вручну, "+wk.w.u+" (порожньо = з розмірів кімнати)"}</label>
         <input type="number" class="num" inputmode="decimal" min="0" step="0.01" id="wManual" placeholder="${wk.w.t==="pcs"?"1":"авто"}" value="${wk.manual}">
       </div></div>`:""}
+    ${wk.w&&canMech(wk.w.n)?`<label style="display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted);margin-top:8px;cursor:pointer">
+      <input type="checkbox" id="wMech" ${wk.mech?"checked":""} style="width:17px;height:17px"> Механічне нанесення (апаратом, +20% матеріалу)
+    </label>`:""}
     <div class="row-sum" style="display:none"></div>`;
   el.querySelector(".work-btn").onclick=()=>openWorkSheet(rm, idx);
   const man=el.querySelector("#wManual");
   if(man) man.oninput=()=>{ wk.manual=man.value; save(); refreshWorkSum(el,rm,wk); updateFooter(); };
+  const mech=el.querySelector("#wMech");
+  if(mech) mech.onchange=()=>{ wk.mech=mech.checked; save(); updateFooter(); };
   el.querySelector(".danger").onclick=()=>{
     rm.works.splice(idx,1); save(); renderRoom();
   };
@@ -830,7 +1194,11 @@ function updateWorkSums(rm){
 function updateFooter(){
   const t=document.getElementById("fTotal");
   if(!t) return;
-  t.innerHTML = (view.roomId? fmt(roomSum(room())) : fmt(clientTotal(client()))) + " <i>грн</i>";
+  if(view.roomId) t.innerHTML = fmt(roomSum(room())) + " <i>грн</i>";
+  else{
+    const c = client();
+    t.innerHTML = fmt(clientTotal(c) + matTotals(c).client) + " <i>грн</i>";
+  }
 }
 
 /* =====================================================================
@@ -839,22 +1207,26 @@ function updateFooter(){
 function openDrawer(){
   drawer.innerHTML=`<h3>Vostrum<span>Bud</span></h3>
     <button class="add-btn" style="margin:0 0 12px;border-style:solid;color:var(--accent-text);border-color:var(--accent)" id="goPrice">📋 Прайс — переглянути / редагувати</button>
+    <button class="add-btn" style="margin:0 0 12px;border-style:solid;color:var(--accent-text);border-color:var(--accent)" id="goRules">📐 Норми і правила</button>
+    <button class="add-btn" style="margin:0 0 16px;border-style:solid" id="goBackup">💾 Резервна копія</button>
     <div class="drawer-list" id="clList"></div>
     <button class="add-btn" id="goNewClient" style="margin:8px 0 0">+ Новий клієнт</button>`;
   drawer.querySelector("#goPrice").onclick=()=>{ closeAll(); renderPriceList(); };
+  drawer.querySelector("#goRules").onclick=()=>{ closeAll(); renderRules(); };
+  drawer.querySelector("#goBackup").onclick=()=>{ closeAll(); openBackupSheet(); };
   const list=drawer.querySelector("#clList");
   data.clients.forEach((c,i)=>{
     const el=document.createElement("div");
     el.className="cl-item"+(c.id===view.clientId?" active":"");
     el.innerHTML=`<div class="info"><b>${esc(c.name)}</b>
-      <small>${STATUSES[c.status]} · ${fmt(clientTotal(c))} грн</small></div>
+      <small>${STATUSES[c.status]} · ${fmt(clientTotal(c))} грн · з ${fmtDateTime(c.createdAt).split(",")[0]}</small></div>
       <button class="mini danger">✕</button>`;
     el.querySelector(".info").onclick=()=>{ view.clientId=c.id; closeAll(); renderClient(); };
     el.querySelector(".danger").onclick=(e)=>{
       e.stopPropagation();
       askConfirm(`Видалити клієнта «${c.name}» з усіма кімнатами?`,()=>{
         data.clients.splice(i,1);
-        if(!data.clients.length) data.clients.push({id:uid(),name:"Новий клієнт",phone:"",address:"",status:0,discount:0,rooms:[]});
+        if(!data.clients.length) data.clients.push({id:uid(),name:"Новий клієнт",phone:"",address:"",status:0,discount:0,rooms:[],createdAt:new Date().toISOString()});
         if(view.clientId===c.id) view.clientId=data.clients[0].id;
         save(); renderClient();
       });
@@ -864,7 +1236,7 @@ function openDrawer(){
   drawer.querySelector("#goNewClient").onclick=()=>{
     drawer.classList.remove("open");
     askText("Новий клієнт","Ім'я клієнта або назва об'єкта","",(name)=>{
-      const c={id:uid(),name,phone:"",address:"",status:0,discount:0,rooms:[]};
+      const c={id:uid(),name,phone:"",address:"",status:0,discount:0,rooms:[],createdAt:new Date().toISOString()};
       data.clients.unshift(c); view.clientId=c.id; save();
       renderClient();
     });
@@ -904,7 +1276,10 @@ function openWorkSheet(rm, idx){
         o.onclick=()=>{
           rm.works[idx].w={...it};
           rm.works[idx].manual="";
-          save(); closeAll(); renderRoom();
+          save(); closeAll();
+          const rule = findLinkRule(it.n);
+          if(rule) openLinksSheet(rm, rule, it.n);
+          else renderRoom();
         };
         listEl.appendChild(o);
       });
@@ -916,6 +1291,69 @@ function openWorkSheet(rm, idx){
   overlay.classList.add("open");
   sheet.classList.add("open");
   setTimeout(()=>{ if(document.body.contains(searchEl)) searchEl.focus(); },250);
+}
+
+
+/* SHEET — пропозиція звязаних робіт після вибору основної */
+function openLinksSheet(rm, rule, mainName){
+  const already = new Set(rm.works.filter(w=>w.w).map(w=>w.w.n));
+  const cand = [];
+  (rule.add||[]).forEach(part=>{
+    const it = findWorkInPrice(part);
+    if(it && !already.has(it.n) && !cand.find(c=>c.it.n===it.n)) cand.push({it, sel:true, yes:false});
+  });
+  const yesCand = [];
+  if(rule.q) (rule.addYes||[]).forEach(part=>{
+    const it = findWorkInPrice(part);
+    if(it && !already.has(it.n) && !yesCand.find(c=>c.it.n===it.n)) yesCand.push({it, sel:true});
+  });
+  if(!cand.length && !yesCand.length){ renderRoom(); return; }
+  let qAnswer = false;
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 4px">Разом з цією роботою зазвичай ідуть:</div>
+    <div style="font-size:.78rem;color:var(--muted);padding:0 4px 8px">Зніми галочки з зайвого — обране додасться в кімнату.</div></div>
+    <div class="sheet-list" id="lnList"></div>
+    <div style="display:flex;gap:8px;padding:12px 16px calc(16px + env(safe-area-inset-bottom))">
+      <button class="btn ghost" style="flex:1" id="lnSkip">Нічого не треба</button>
+      <button class="btn" style="flex:1" id="lnOk">Додати обрані</button>
+    </div>`;
+  const list = sheet.querySelector("#lnList");
+  cand.forEach((c,i)=>{
+    const row=document.createElement("div"); row.className="opt";
+    row.innerHTML=`<label style="display:flex;align-items:center;gap:10px;flex:1;cursor:pointer">
+      <input type="checkbox" checked style="width:18px;height:18px;flex:none">
+      <span>${esc(c.it.n)}</span></label>
+      <span class="price">${c.it.p*(c.it.coats||1)} грн/${c.it.u}</span>`;
+    row.querySelector("input").onchange=e=>{ c.sel=e.target.checked; };
+    list.appendChild(row);
+  });
+  if(rule.q && yesCand.length){
+    const qRow=document.createElement("div");
+    qRow.style.cssText="padding:12px 10px;border-top:1px solid var(--line);margin-top:6px";
+    qRow.innerHTML=`<label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700;font-size:.9rem">
+      <input type="checkbox" id="lnQ" style="width:18px;height:18px;flex:none"> ${esc(rule.q)}</label>
+      <div id="lnYesBox" style="display:none;margin-top:8px"></div>`;
+    list.appendChild(qRow);
+    const yesBox = qRow.querySelector("#lnYesBox");
+    yesCand.forEach(c=>{
+      const r=document.createElement("div"); r.className="opt";
+      r.innerHTML=`<span>+ ${esc(c.it.n)}</span><span class="price">${c.it.p*(c.it.coats||1)} грн/${c.it.u}</span>`;
+      yesBox.appendChild(r);
+    });
+    qRow.querySelector("#lnQ").onchange=e=>{
+      qAnswer = e.target.checked;
+      yesBox.style.display = qAnswer? "" : "none";
+    };
+  }
+  sheet.querySelector("#lnOk").onclick=()=>{
+    let n=0;
+    cand.filter(c=>c.sel).forEach(c=>{ rm.works.push({w:{...c.it}, manual:""}); n++; });
+    if(qAnswer) yesCand.forEach(c=>{ rm.works.push({w:{...c.it}, manual:""}); n++; });
+    save(); closeAll(); renderRoom();
+    if(n) toast(`Додано ${n} звязаних робіт`);
+  };
+  sheet.querySelector("#lnSkip").onclick=()=>{ closeAll(); renderRoom(); };
+  overlay.classList.add("open"); sheet.classList.add("open");
 }
 
 /* SHEET — своя робота вручну: назва, ціна, тип виміру, опційно зберегти в прайс */
@@ -1237,6 +1675,373 @@ function openImportReviewSheet(items, after){
 }
 
 
+
+/* =====================================================================
+   ЕКРАН "НОРМИ І ПРАВИЛА": матеріали, звязки, час — перегляд і редагування
+   ===================================================================== */
+/* ---------- Резервна копія: справжній файл на телефоні, незалежний від кешу застосунку ---------- */
+function collectBackup(){
+  return {
+    app: "VostrumBud", version: 1, exportedAt: new Date().toISOString(),
+    data, PRICE, LINKS, MATS, TIMES, theme: root.getAttribute("data-theme")
+  };
+}
+function openBackupSheet(){
+  const clientsN = data.clients.length;
+  const roomsN = data.clients.reduce((a,c)=>a+c.rooms.length,0);
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 6px">Резервна копія</div>
+    <div style="font-size:.8rem;color:var(--muted);padding:0 4px 14px;line-height:1.5">
+      Зберігає ВСЕ: клієнтів, кімнати, прайс, норми і правила — в один файл на телефоні.
+      Цей файл переживе видалення застосунку. Зараз у тебе: ${clientsN} клієнт(и), ${roomsN} кімнат.
+    </div>
+    <button class="btn" style="width:100%;margin-bottom:10px" id="bkExport">⬇ Зберегти файл на телефон</button>
+    <div style="font-size:.78rem;color:var(--muted);padding:14px 4px 6px;border-top:1px solid var(--line)">Відновити з файлу:</div>
+    <input type="file" id="bkFile" accept=".json" style="margin:4px 4px 10px;font-size:.85rem;color:var(--text)">
+    <div style="display:flex;gap:8px;padding:8px 0 16px">
+      <button class="btn ghost" style="flex:1" id="bkCancel">Закрити</button>
+    </div></div>`;
+  sheet.querySelector("#bkExport").onclick=()=>{
+    const blob = new Blob([JSON.stringify(collectBackup(), null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const d0 = new Date();
+    const fname = `vostrumbud-backup-${d0.getFullYear()}-${String(d0.getMonth()+1).padStart(2,"0")}-${String(d0.getDate()).padStart(2,"0")}.json`;
+    const a = document.createElement("a");
+    a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 3000);
+    toast("Файл збережено — перевір папку Завантаження");
+  };
+  sheet.querySelector("#bkFile").onchange=async()=>{
+    const f = sheet.querySelector("#bkFile").files[0];
+    if(!f) return;
+    try{
+      const json = JSON.parse(await f.text());
+      if(!json || !json.data || !Array.isArray(json.data.clients)){ toast("Це не файл резервної копії VostrumBud."); return; }
+      askConfirm(`Відновити з файлу від ${fmtDateTime(json.exportedAt)}? Це замінить усі поточні дані.`, ()=>{
+        data = json.data;
+        if(json.PRICE) PRICE = json.PRICE;
+        if(json.LINKS) LINKS = json.LINKS;
+        if(json.MATS) MATS = json.MATS;
+        if(json.TIMES) TIMES = json.TIMES;
+        save(); savePrice(); saveLinks(); saveMats(); saveTimes();
+        if(json.theme) applyTheme(json.theme);
+        view.clientId = data.clients[0]?.id || null; view.roomId = null;
+        closeAll(); renderClient();
+        toast("Відновлено з резервної копії");
+      });
+    }catch(e){ toast("Не вдалося прочитати файл."); }
+  };
+  sheet.querySelector("#bkCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+}
+
+/* ---------- парсер CSV/TSV: підтримує кому, крапку з комою, таб ---------- */
+function parseDelimited(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return [];
+  const delim = lines[0].includes(";") ? ";" : (lines[0].includes("\t") ? "\t" : ",");
+  return lines.map(l=> l.split(delim).map(c=>c.trim().replace(/^"|"$/g,"")));
+}
+function looksLikeHeader(cells){
+  return /робот|матеріал|назв|трigger|тригер|норм|цін|одиниц/i.test(cells.join(" "));
+}
+
+function renderRules(){
+  app.innerHTML="";
+  app.appendChild(topbar("Норми і правила","матеріали · звязки · час",()=>renderClient()));
+
+  const tabs=document.createElement("div");
+  tabs.className="card"; tabs.style.cssText="display:flex;gap:6px;padding:8px";
+  tabs.innerHTML=`<span class="chip st0" data-tab="0" style="flex:1;justify-content:center">Матеріали</span>
+    <span class="chip" data-tab="1" style="flex:1;justify-content:center">Звязки</span>
+    <span class="chip" data-tab="2" style="flex:1;justify-content:center">Час</span>`;
+  app.appendChild(tabs);
+
+  const toolbar=document.createElement("div");
+  toolbar.className="card"; toolbar.style.cssText="display:flex;gap:8px";
+  app.appendChild(toolbar);
+
+  const body=document.createElement("div"); app.appendChild(body);
+  let cur=0;
+  tabs.querySelectorAll("[data-tab]").forEach(ch=>{
+    ch.onclick=()=>{ cur=+ch.dataset.tab;
+      tabs.querySelectorAll("[data-tab]").forEach(c2=>c2.className="chip"+(+c2.dataset.tab===cur?" st0":""));
+      draw(); };
+  });
+
+  function drawToolbar(){
+    const labels = ["+ Нова робота (матеріали)","+ Нове правило звязки","+ Нова норма часу"];
+    toolbar.innerHTML = `
+      <button class="btn" style="flex:1" id="rAdd">${labels[cur]}</button>
+      <button class="btn ghost" style="flex:1" id="rImport">⇪ Імпорт з файлу</button>`;
+    toolbar.querySelector("#rAdd").onclick=()=>{
+      if(cur===0) openMatWorkEdit(null, draw);
+      if(cur===1) openLinkEdit(null, draw);
+      if(cur===2) openTimeEdit(null, draw);
+    };
+    toolbar.querySelector("#rImport").onclick=()=>openRulesImportSheet(cur, draw);
+  }
+
+  function draw(){
+    drawToolbar();
+    body.innerHTML="";
+    if(cur===0){ /* МАТЕРІАЛИ */
+      if(!MATS.length) body.innerHTML=`<div class="empty">Ще немає жодної роботи з матеріалами.</div>`;
+      MATS.forEach((r,ri)=>{
+        const card=document.createElement("div"); card.className="card";
+        const head=document.createElement("div");
+        head.className="item"; head.style.marginBottom = r.mats.length? "4px" : "0";
+        head.innerHTML=`<div class="info"><b style="font-size:.92rem">${esc(r.t)}</b>
+          <small>${r.mats.length} матеріал${r.mats.length===1?"":"и"}${r.note?" · "+esc(r.note):""}</small></div>
+          <button class="mini" title="Додати матеріал">＋</button>
+          <button class="mini danger" title="Видалити роботу">✕</button>`;
+        head.querySelector(".mini:not(.danger)").onclick=()=>openMatItemEdit(ri,null,draw);
+        head.querySelector(".danger").onclick=()=>askConfirm(`Видалити роботу «${r.t}» з бази матеріалів?`,()=>{
+          MATS.splice(ri,1); saveMats(); draw();
+        });
+        card.appendChild(head);
+        r.mats.forEach((m,mi)=>{
+          const row=document.createElement("div");
+          row.style.cssText="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:.83rem;align-items:center";
+          row.innerHTML=`<span style="flex:1">${esc(m.n)}</span>
+            <span style="color:var(--muted);white-space:nowrap;text-align:right">${m.per}/${m.u}${m.pack?` · уп.${m.pack}`:""}<br>${m.p.join(" / ")} грн</span>
+            <button class="mini">✎</button>`;
+          row.querySelector(".mini").onclick=()=>openMatItemEdit(ri,mi,draw);
+          card.appendChild(row);
+        });
+        body.appendChild(card);
+      });
+    }
+    if(cur===1){ /* ЗВЯЗКИ */
+      if(!LINKS.length) body.innerHTML=`<div class="empty">Ще немає жодного правила.</div>`;
+      LINKS.forEach((r,ri)=>{
+        const card=document.createElement("div"); card.className="card item";
+        card.innerHTML=`<div class="info"><b style="font-size:.9rem">${esc(r.t)}</b>
+          <small>→ ${esc(r.add.join(", "))}${r.q?`<br>❓ ${esc(r.q)} → ${esc((r.addYes||[]).join(", "))}`:""}</small></div>
+          <button class="mini">✎</button><button class="mini danger">✕</button>`;
+        card.querySelector(".mini:not(.danger)").onclick=()=>openLinkEdit(ri,draw);
+        card.querySelector(".danger").onclick=()=>askConfirm(`Видалити правило «${r.t}»?`,()=>{
+          LINKS.splice(ri,1); saveLinks(); draw(); });
+        body.appendChild(card);
+      });
+    }
+    if(cur===2){ /* ЧАС */
+      const hint=document.createElement("div");
+      hint.className="empty"; hint.style.cssText="padding:10px;text-align:left";
+      hint.textContent="Скільки одиниць роботи (м²/м.п.) робить 1 людина за день.";
+      body.appendChild(hint);
+      TIMES.forEach((r,ri)=>{
+        const card=document.createElement("div"); card.className="card item";
+        card.innerHTML=`<div class="info"><b style="font-size:.9rem">${esc(r.t)}</b>
+          <small>${r.per} од./день на людину</small></div>
+          <button class="mini">✎</button><button class="mini danger">✕</button>`;
+        card.querySelector(".mini:not(.danger)").onclick=()=>openTimeEdit(ri,draw);
+        card.querySelector(".danger").onclick=()=>askConfirm(`Видалити норму «${r.t}»?`,()=>{
+          TIMES.splice(ri,1); saveTimes(); draw(); });
+        body.appendChild(card);
+      });
+    }
+  }
+  draw();
+  footer.innerHTML=`<div class="footer-inner"><div class="footer-row">
+    <div class="total"><small>Редагуй сміливо</small><b>Твої норми</b></div>
+    <button class="btn" id="btnRBack">Готово</button></div></div>`;
+  document.getElementById("btnRBack").onclick=()=>renderClient();
+}
+
+/* редагування ОДНОГО матеріалу всередині роботи (створення й правка) */
+function openMatItemEdit(ri, mi, after){
+  const isNew = mi===null;
+  const m = isNew? {n:"",u:"кг",per:1,pack:0,p:[0,0,0]} : MATS[ri].mats[mi];
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 10px">${isNew?"Новий матеріал — "+esc(MATS[ri].t):esc(m.n)}</div>
+    <div class="grid2">
+      <div class="fld"><label>Назва матеріалу</label><input class="search" id="miName" value="${esc(m.n)}" placeholder="напр. Ґрунтовка"></div>
+      <div class="fld"><label>Одиниця</label><input class="search" id="miU" value="${esc(m.u)}" placeholder="кг / л / шт"></div>
+    </div>
+    <div class="grid2">
+      <div class="fld"><label>Витрата на 1 од. роботи</label>
+        <input class="search num" id="mePer" type="number" step="0.001" value="${m.per}"></div>
+      <div class="fld"><label>Фасовка (0 = без)</label>
+        <input class="search num" id="mePack" type="number" step="0.01" value="${m.pack||0}"></div>
+    </div>
+    <div class="grid3">
+      <div class="fld"><label>Дешевий, грн</label><input class="search num" id="meP0" type="number" step="0.1" value="${m.p[0]}"></div>
+      <div class="fld"><label>Оптим., грн</label><input class="search num" id="meP1" type="number" step="0.1" value="${m.p[1]}"></div>
+      <div class="fld"><label>Дорогий, грн</label><input class="search num" id="meP2" type="number" step="0.1" value="${m.p[2]}"></div>
+    </div>
+    <div style="display:flex;gap:8px;padding:8px 0 16px">
+      <button class="btn ghost" style="flex:1" id="meCancel">Скасувати</button>
+      <button class="btn" style="flex:1" id="meOk">Зберегти</button>
+    </div></div>`;
+  sheet.querySelector("#meOk").onclick=()=>{
+    const n=sheet.querySelector("#miName").value.trim();
+    const u=sheet.querySelector("#miU").value.trim()||"шт";
+    if(!n){ toast("Впиши назву матеріалу."); return; }
+    const per=parseFloat(sheet.querySelector("#mePer").value)||0;
+    const pk=parseFloat(sheet.querySelector("#mePack").value)||0;
+    const p=[0,1,2].map(i=>parseFloat(sheet.querySelector("#meP"+i).value)||0);
+    const item={n,u,per,p}; if(pk>0) item.pack=pk;
+    if(isNew) MATS[ri].mats.push(item); else MATS[ri].mats[mi]=item;
+    saveMats(); closeAll(); after(); toast("Збережено");
+  };
+  sheet.querySelector("#meCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+}
+/* створення нової роботи в базі матеріалів (без матеріалів усередині — додаються окремо) */
+function openMatWorkEdit(ri, after){
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 10px">Нова робота для матеріалів</div>
+    <div class="fld"><label>Шматок назви роботи з прайсу</label>
+      <input class="search" id="mwT" placeholder="напр. монтаж плінтуса дерев'яного"></div>
+    <div style="display:flex;gap:8px;padding:8px 0 16px">
+      <button class="btn ghost" style="flex:1" id="mwCancel">Скасувати</button>
+      <button class="btn" style="flex:1" id="mwOk">Створити</button>
+    </div></div>`;
+  sheet.querySelector("#mwOk").onclick=()=>{
+    const t=sheet.querySelector("#mwT").value.trim().toLowerCase();
+    if(!t){ toast("Впиши назву."); return; }
+    MATS.unshift({t, mats:[]}); saveMats(); closeAll(); after();
+    openMatItemEdit(0,null,after);
+  };
+  sheet.querySelector("#mwCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+}
+function openTimeEdit(ri, after){
+  const isNew = ri===null;
+  const r = isNew? {t:"",per:10} : TIMES[ri];
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 10px">${isNew?"Нова норма часу":esc(r.t)}</div>
+    <div class="fld"><label>Шматок назви роботи</label><input class="search" id="teT" value="${esc(r.t)}" placeholder="напр. шпаклівка стін"></div>
+    <div class="fld"><label>Одиниць (м²/м.п.) за день на людину</label><input class="search num" id="tePer" type="number" step="0.5" value="${r.per}"></div>
+    <div style="display:flex;gap:8px;padding:8px 0 16px">
+      <button class="btn ghost" style="flex:1" id="teCancel">Скасувати</button>
+      <button class="btn" style="flex:1" id="teOk">Зберегти</button>
+    </div></div>`;
+  sheet.querySelector("#teOk").onclick=()=>{
+    const t=sheet.querySelector("#teT").value.trim().toLowerCase();
+    const per=parseFloat(sheet.querySelector("#tePer").value);
+    if(!t||!(per>0)){ toast("Впиши назву і додатну норму."); return; }
+    if(isNew) TIMES.unshift({t,per}); else TIMES[ri]={t,per};
+    saveTimes(); closeAll(); after(); toast("Збережено");
+  };
+  sheet.querySelector("#teCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+}
+function openLinkEdit(ri, after){
+  const r = ri===null? {t:"",add:[],q:"",addYes:[]} : LINKS[ri];
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 10px">${ri===null?"Нове правило":"Редагувати правило"}</div>
+    <div class="fld"><label>Якщо вибрано роботу (шматок назви)</label>
+      <input class="search" id="leT" value="${esc(r.t)}" placeholder="напр. рідкі шпалери"></div>
+    <div class="fld"><label>Запропонувати (шматки назв через кому)</label>
+      <input class="search" id="leAdd" value="${esc(r.add.join(", "))}" placeholder="ґрунтовка стін, плінтус"></div>
+    <div class="fld"><label>Питання (опційно)</label>
+      <input class="search" id="leQ" value="${esc(r.q||"")}" placeholder="Стіна темна або кольорова?"></div>
+    <div class="fld"><label>Якщо «так» — додати (через кому)</label>
+      <input class="search" id="leYes" value="${esc((r.addYes||[]).join(", "))}" placeholder="фарбування стін"></div>
+    <div style="display:flex;gap:8px;padding:8px 0 16px">
+      <button class="btn ghost" style="flex:1" id="leCancel">Скасувати</button>
+      <button class="btn" style="flex:1" id="leOk">Зберегти</button>
+    </div></div>`;
+  sheet.querySelector("#leOk").onclick=()=>{
+    const t=sheet.querySelector("#leT").value.trim().toLowerCase();
+    const add=sheet.querySelector("#leAdd").value.split(",").map(s=>s.trim()).filter(Boolean);
+    if(!t||!add.length){ toast("Впиши тригер і хоча б одну роботу."); return; }
+    const q=sheet.querySelector("#leQ").value.trim();
+    const addYes=sheet.querySelector("#leYes").value.split(",").map(s=>s.trim()).filter(Boolean);
+    const rule={t,add}; if(q){ rule.q=q; rule.addYes=addYes; }
+    if(ri===null) LINKS.unshift(rule); else LINKS[ri]=rule;
+    saveLinks(); closeAll(); after(); toast("Збережено");
+  };
+  sheet.querySelector("#leCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+}
+
+/* ---------- Імпорт CSV/Excel-експорту для матеріалів/звязок/часу ---------- */
+function rulesImportHint(tab){
+  return [
+    "Колонки: Робота; Матеріал; Одиниця; Витрата; Фасовка; Дешевий; Оптимальний; Дорогий",
+    "Колонки: Тригер; Запропонувати (через кому); Питання; ЯкщоТак (через кому)",
+    "Колонки: Робота; НормаНаДень",
+  ][tab];
+}
+function openRulesImportSheet(tab, after){
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 6px">Імпорт із файлу</div>
+    <div style="font-size:.78rem;color:var(--muted);padding:0 4px 10px;line-height:1.4">
+      Excel/Google Таблиці → «Зберегти як CSV» → завантаж файл нижче, або встав текст напряму.<br>${rulesImportHint(tab)}
+    </div>
+    <input type="file" id="riFile" accept=".csv,.txt,.tsv" style="margin:0 4px 10px;font-size:.85rem;color:var(--text)">
+    <textarea id="riText" placeholder="Встав сюди рядки таблиці…" style="width:100%;min-height:130px;border:none;background:var(--input);border-radius:10px;padding:11px 12px;font-size:.85rem;color:var(--text);font-family:inherit"></textarea>
+    <div style="display:flex;gap:8px;padding:12px 0 16px">
+      <button class="btn ghost" style="flex:1" id="riCancel">Скасувати</button>
+      <button class="btn" style="flex:1" id="riGo">Додати з файлу</button>
+    </div></div>`;
+  const fileEl=sheet.querySelector("#riFile"), textEl=sheet.querySelector("#riText");
+  fileEl.onchange=async()=>{
+    const f=fileEl.files[0]; if(!f) return;
+    try{ textEl.value = await f.text(); toast("Файл прочитано"); }
+    catch(e){ toast("Не вдалося прочитати файл."); }
+  };
+  sheet.querySelector("#riGo").onclick=()=>{
+    const rows = parseDelimited(textEl.value);
+    if(!rows.length){ toast("Порожньо."); return; }
+    const dataRows = looksLikeHeader(rows[0]) ? rows.slice(1) : rows;
+    let n=0;
+    if(tab===0){
+      dataRows.forEach(c=>{
+        if(c.length<4) return;
+        const [wt, mn, u, per, pack, p0, p1, p2] = c;
+        if(!wt||!mn) return;
+        const key = wt.trim().toLowerCase();
+        let rule = MATS.find(r=>r.t===key);
+        if(!rule){ rule={t:key, mats:[]}; MATS.push(rule); }
+        const item = {
+          n: mn.trim(), u: (u||"шт").trim(), per: parseFloat(per)||1,
+          p: [parseFloat(p0)||0, parseFloat(p1)||parseFloat(p0)||0, parseFloat(p2)||parseFloat(p1)||parseFloat(p0)||0]
+        };
+        const pk = parseFloat(pack); if(pk>0) item.pack=pk;
+        const existing = rule.mats.find(m=>m.n.toLowerCase()===item.n.toLowerCase());
+        if(existing) Object.assign(existing, item); else rule.mats.push(item);
+        n++;
+      });
+      saveMats();
+    }
+    if(tab===1){
+      dataRows.forEach(c=>{
+        if(c.length<2) return;
+        const [t, add, q, addYes] = c;
+        if(!t||!add) return;
+        const rule = { t:t.trim().toLowerCase(), add: add.split(/[,|]/).map(s=>s.trim()).filter(Boolean) };
+        if(q && q.trim()){ rule.q=q.trim(); rule.addYes=(addYes||"").split(/[,|]/).map(s=>s.trim()).filter(Boolean); }
+        const idx = LINKS.findIndex(r=>r.t===rule.t);
+        if(idx>=0) LINKS[idx]=rule; else LINKS.push(rule);
+        n++;
+      });
+      saveLinks();
+    }
+    if(tab===2){
+      dataRows.forEach(c=>{
+        if(c.length<2) return;
+        const [t, per] = c;
+        const p = parseFloat(per);
+        if(!t || !(p>0)) return;
+        const key=t.trim().toLowerCase();
+        const idx = TIMES.findIndex(r=>r.t===key);
+        if(idx>=0) TIMES[idx].per=p; else TIMES.push({t:key, per:p});
+        n++;
+      });
+      saveTimes();
+    }
+    closeAll(); after();
+    toast(n? `Додано/оновлено ${n} рядків` : "Не знайшов підходящих рядків");
+  };
+  sheet.querySelector("#riCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+}
+
 function buildLines(c){
   const rooms=[];
   c.rooms.forEach(rm=>{
@@ -1275,8 +2080,23 @@ function buildClientHtml(c){
       html+=`<tr><td>${esc(l.n)}</td><td>${l.dims}</td><td class="r">${fmt(l.q)} ${l.u}</td><td class="r">${fmt(l.p)}</td><td class="r">${fmt(l.s)}</td></tr>`;
     });
   });
-  html+=`</table>
-    <div class="p-totals"><b>До сплати: ${fmt(clientTotal(c))} грн</b></div>
+  html+=`</table>`;
+  const mt = matTotals(c);
+  if(mt.list.length){
+    html+=`<div class="p-title">Матеріали (рівень: ${TIER_NAMES[c.tier===undefined?1:c.tier].toLowerCase()})</div>
+    <table class="p-tbl">
+      <tr><th style="width:52%">Матеріал</th><th>Кількість</th><th>Сума, грн</th></tr>`;
+    mt.list.forEach(m=>{
+      html+=`<tr><td>${esc(m.n)}</td><td class="r">${m.packs!==null? m.packs+" уп ("+fmt(m.buyQty)+" "+m.u+")" : fmt(m.buyQty)+" "+m.u}</td><td class="r">${fmt(m.client)}</td></tr>`;
+    });
+    html+=`</table>`;
+  }
+  const dd = clientDays(c);
+  html+=`<div class="p-totals">
+      Роботи: ${fmt(clientTotal(c))} грн${mt.list.length?`<br>Матеріали: ${fmt(mt.client)} грн`:""}
+      ${dd>0?`<br>Орієнтовний строк виконання: ~${fmt(dd)} роб. дн.`:""}
+      <br><b>Разом до сплати: ${fmt(clientTotal(c)+mt.client)} грн</b>
+    </div>
     <div class="p-foot">${esc(COMPANY.note)}</div>`;
   return html;
 }
@@ -1327,7 +2147,13 @@ function copyText(){
     rm.lines.forEach(l=>{ t+=`  ${l.n}: ${fmt(l.q)} ${l.u} × ${fmt(l.p)} = ${fmt(l.s)} грн\n`; });
     t+=`  Разом: ${fmt(rm.sum)} грн\n`;
   });
-  t+=`\nДО СПЛАТИ: ${fmt(clientTotal(c))} грн\n\n${COMPANY.note}`;
+  const mt = matTotals(c);
+  if(mt.list.length){
+    t+=`\n— МАТЕРІАЛИ (${TIER_NAMES[c.tier===undefined?1:c.tier].toLowerCase()})\n`;
+    mt.list.forEach(m=>{ t+=`  ${m.n}: ${m.packs!==null? m.packs+" уп" : fmt(m.buyQty)+" "+m.u} = ${fmt(m.client)} грн\n`; });
+    t+=`  Разом матеріали: ${fmt(mt.client)} грн\n`;
+  }
+  t+=`\nДО СПЛАТИ: ${fmt(clientTotal(c)+mt.client)} грн\n\n${COMPANY.note}`;
   const done=()=>toast("Скопійовано — встав у Viber/Telegram.");
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(t).then(done).catch(()=>fallbackCopy(t,done));
