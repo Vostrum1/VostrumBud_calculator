@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#141210">
+<title>VostrumBud — Кошторис</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#f5f3ef; --card:#ffffff; --text:#1c1a17; --muted:#8a8377;
+    --line:#e6e2da; --accent:#e08a1e; --accent-soft:#fdf1de; --accent-text:#8a5200;
+    --danger:#c0392b; --ok:#2e7d4f; --sheet:#ffffff; --overlay:rgba(20,18,16,.45);
+    --shadow:0 4px 24px rgba(28,26,23,.08); --input:#f5f3ef;
+  }
+  [data-theme="dark"]{
+    --bg:#141210; --card:#1e1b18; --text:#f0ece5; --muted:#8d8578;
+    --line:#2c2823; --accent:#f0a63c; --accent-soft:#2b2214; --accent-text:#f0a63c;
+    --danger:#e05c4c; --ok:#4caf7d; --sheet:#211e1a; --overlay:rgba(0,0,0,.6);
+    --shadow:0 4px 24px rgba(0,0,0,.4); --input:#161310;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{font-size:16px}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--text);min-height:100dvh;
+    transition:background .25s,color .25s;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:12px 16px 130px}
+
+  /* ---------- top bar ---------- */
+  .topbar{display:flex;align-items:center;gap:10px;padding:6px 0 16px}
+  .icon-btn{
+    width:44px;height:44px;border-radius:14px;border:1px solid var(--line);
+    background:var(--card);color:var(--text);font-size:1.15rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);flex:none;
+  }
+  .topbar .title{flex:1;min-width:0}
+  .topbar .title b{font-size:1.1rem;font-weight:800;letter-spacing:-.02em;display:block;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar .title b span{color:var(--accent)}
+  .topbar .title small{color:var(--muted);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}
+
+  /* ---------- cards & inputs ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:12px;box-shadow:var(--shadow);margin-bottom:10px;animation:pop .18s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .fld{margin-bottom:8px}
+  .fld label{display:block;font-size:.68rem;color:var(--muted);margin:0 0 3px 4px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.04em}
+  .fld input,.fld textarea{
+    width:100%;border:none;background:var(--input);border-radius:10px;
+    padding:11px 12px;font-size:.95rem;color:var(--text);min-height:44px;font-family:inherit;
+  }
+  .fld textarea{min-height:60px;resize:vertical}
+  .fld input::placeholder,.fld textarea::placeholder{color:var(--muted)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .num{text-align:center;font-variant-numeric:tabular-nums}
+
+  .chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;
+    padding:6px 12px;font-size:.78rem;font-weight:700;cursor:pointer;border:1px solid var(--line);
+    background:var(--input);color:var(--muted)}
+  .chip.st0{color:var(--accent-text);border-color:var(--accent);background:var(--accent-soft)}
+  .chip.st1{color:#1461b3;border-color:#1461b3;background:rgba(20,97,179,.1)}
+  .chip.st2{color:var(--ok);border-color:var(--ok);background:rgba(46,125,79,.1)}
+
+  /* ---------- room / client list items ---------- */
+  .item{display:flex;align-items:center;gap:8px}
+  .item .info{flex:1;min-width:0;cursor:pointer;padding:2px 0}
+  .item .info b{display:block;font-size:.98rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .info small{color:var(--muted);font-size:.78rem}
+  .item .sum{font-weight:800;font-size:.92rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .mini{border:none;background:none;color:var(--muted);font-size:1.05rem;cursor:pointer;
+    width:36px;height:40px;border-radius:10px;flex:none}
+  .mini:active{color:var(--accent)}
+  .mini.danger:active{color:var(--danger)}
+
+  /* ---------- works ---------- */
+  .work-btn{
+    text-align:left;border:none;background:var(--input);border-radius:10px;
+    padding:11px 12px;font-size:.92rem;color:var(--text);cursor:pointer;
+    min-height:44px;line-height:1.25;width:100%;
+  }
+  .work-btn.placeholder{color:var(--muted)}
+  .work-btn .unit-tag{display:block;font-size:.72rem;color:var(--accent-text);margin-top:2px;font-weight:600}
+  .row-top{display:grid;grid-template-columns:1fr 34px;gap:8px;align-items:center}
+  .dims{display:grid;gap:8px;margin-top:8px}
+  .dims.c3{grid-template-columns:1fr 1fr 1fr}
+  .dims.c2{grid-template-columns:1fr 1fr}
+  .dims.c1{grid-template-columns:1fr}
+  .row-sum{margin-top:8px;text-align:right;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+  .row-sum b{color:var(--text)}
+
+  .add-btn{
+    margin:2px 0 10px;width:100%;padding:13px;border-radius:14px;cursor:pointer;
+    border:1.5px dashed var(--line);background:none;color:var(--muted);
+    font-size:.95rem;font-weight:600;
+  }
+  .add-btn:active{border-color:var(--accent);color:var(--accent)}
+
+  .sec-title{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+    font-weight:700;margin:16px 4px 8px;display:flex;justify-content:space-between;align-items:center}
+
+  /* ---------- modifiers ---------- */
+  .mods{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .mod-chip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);
+    color:var(--accent-text);border:1px solid var(--accent);border-radius:999px;
+    padding:6px 10px;font-size:.78rem;font-weight:700}
+  .mod-chip i{font-style:normal;cursor:pointer;opacity:.7;padding:0 2px}
+
+  /* ---------- footer ---------- */
+  .footer{
+    position:fixed;bottom:0;left:0;right:0;z-index:10;
+    background:var(--card);border-top:1px solid var(--line);
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  }
+  .footer-inner{max-width:520px;margin:0 auto}
+  .footer-row{display:flex;gap:10px;align-items:center}
+  .total{flex:1;line-height:1.1}
+  .total small{display:block;color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em}
+  .total b{font-size:1.35rem;font-weight:800;font-variant-numeric:tabular-nums}
+  .total b i{font-style:normal;font-size:.85rem;color:var(--muted);font-weight:600}
+  .btn{
+    border:none;background:var(--accent);color:#1c1206;font-weight:800;
+    padding:12px 16px;border-radius:13px;font-size:.9rem;cursor:pointer;
+    box-shadow:0 4px 14px rgba(224,138,30,.3);
+  }
+  .btn.ghost{background:var(--input);color:var(--text);box-shadow:none;border:1px solid var(--line)}
+  .btn:active{transform:scale(.97)}
+
+  /* ---------- drawer ---------- */
+  .overlay{position:fixed;inset:0;background:var(--overlay);z-index:20;
+    opacity:0;pointer-events:none;transition:opacity .2s}
+  .overlay.open{opacity:1;pointer-events:auto}
+  .drawer{
+    position:fixed;top:0;bottom:0;left:0;width:82%;max-width:320px;z-index:22;
+    background:var(--sheet);transform:translateX(-102%);transition:transform .25s cubic-bezier(.3,.9,.3,1);
+    box-shadow:8px 0 40px rgba(0,0,0,.25);display:flex;flex-direction:column;
+    padding:16px 12px calc(16px + env(safe-area-inset-bottom));
+  }
+  .drawer.open{transform:translateX(0)}
+  .drawer h3{font-size:1.05rem;font-weight:800;padding:4px 8px 14px}
+  .drawer h3 span{color:var(--accent)}
+  .drawer-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .cl-item{padding:10px;border-radius:12px;cursor:pointer;margin-bottom:4px;display:flex;
+    align-items:center;gap:8px}
+  .cl-item.active{background:var(--accent-soft)}
+  .cl-item .info{flex:1;min-width:0}
+  .cl-item .info b{display:block;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cl-item .info small{color:var(--muted);font-size:.75rem}
+
+  /* ---------- bottom sheet ---------- */
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:21;
+    background:var(--sheet);border-radius:20px 20px 0 0;
+    max-height:80dvh;display:flex;flex-direction:column;
+    transform:translateY(102%);transition:transform .25s cubic-bezier(.3,.9,.3,1);
+    box-shadow:0 -8px 40px rgba(0,0,0,.25);
+  }
+  .sheet.open{transform:translateY(0)}
+  .sheet-head{padding:10px 16px 8px}
+  .grip{width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
+  .search{width:100%;border:none;background:var(--input);border-radius:12px;
+    padding:12px 14px;font-size:1rem;color:var(--text)}
+  .search::placeholder{color:var(--muted)}
+  .sheet-list{overflow-y:auto;padding:4px 8px calc(16px + env(safe-area-inset-bottom));flex:1;-webkit-overflow-scrolling:touch}
+  .cat{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent-text);
+    padding:14px 10px 6px;font-weight:700}
+  .opt{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:12px 10px;border-radius:10px;cursor:pointer;font-size:.92rem;line-height:1.3}
+  .opt:active{background:var(--accent-soft)}
+  .opt .price{white-space:nowrap;color:var(--muted);font-size:.82rem;font-variant-numeric:tabular-nums}
+  .no-match{padding:24px;text-align:center;color:var(--muted);font-size:.9rem}
+  .empty{color:var(--muted);font-size:.88rem;text-align:center;padding:22px 8px}
+
+  /* ---------- print / PDF ---------- */
+  #printArea{display:none}
+  @media print{
+    body *{visibility:hidden}
+    #printArea, #printArea *{visibility:visible}
+    #printArea{display:block;position:absolute;inset:0;background:#fff;color:#000;
+      font-family:Georgia,"Times New Roman",serif;padding:24px}
+    .p-head{display:flex;justify-content:space-between;align-items:flex-start;
+      border-bottom:3px solid #e08a1e;padding-bottom:12px;margin-bottom:16px}
+    .p-head .logo{font-size:22px;font-weight:bold;letter-spacing:-.5px}
+    .p-head .logo span{color:#e08a1e}
+    .p-head .contact{text-align:right;font-size:11px;line-height:1.5;color:#444}
+    .p-meta{font-size:12px;line-height:1.6;margin-bottom:14px;color:#222}
+    .p-title{font-size:15px;font-weight:bold;margin:14px 0 8px}
+    table.p-tbl{width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:6px}
+    .p-tbl th{background:#f3ede2;text-align:left;padding:6px 8px;border:1px solid #ccc;font-size:10.5px;
+      text-transform:uppercase;letter-spacing:.03em}
+    .p-tbl td{padding:6px 8px;border:1px solid #ccc;vertical-align:top}
+    .p-tbl td.r{text-align:right;white-space:nowrap}
+    .p-room{background:#faf7f0;font-weight:bold}
+    .p-note{font-style:italic;color:#555;font-size:10.5px}
+    .p-totals{margin-top:10px;font-size:13px;text-align:right;line-height:1.8}
+    .p-totals b{font-size:16px}
+    .p-foot{margin-top:22px;font-size:10px;color:#666;border-top:1px solid #ccc;padding-top:8px;line-height:1.6}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app"></div>
+
+<div class="footer" id="footer"></div>
+
+<div class="overlay" id="overlay"></div>
+<div class="drawer" id="drawer"></div>
+<div class="sheet" id="sheet"></div>
+<div id="printArea"></div>
+
+<script>
+/* =====================================================================
+   ПРАЙС VostrumBud
+   n=назва, p=ціна, u=одиниця, coats:2 → фарбування ×2 шари,
+   prep:true → підготовчі роботи (на них діють модифікатори «криві стіни»)
+   t = тип розмірів:
+     "wall" → Довжина+Ширина+Висота кімнати → 2×(Д+Ш)×В − прорізи
+     "flat" → Довжина+Ширина → Д×Ш
+     "len"  → тільки Довжина (м.п.)
+   ===================================================================== */
+const PRICE = [
+  {cat:"Сантехніка", items:[
+    {n:"Заміна бачка унітазу", p:350, u:"шт", t:"pcs"},
+    {n:"Заміна механізму зливу", p:300, u:"шт", t:"pcs"},
+    {n:"Заміна / установка унітаза", p:1000, u:"шт", t:"pcs"},
+    {n:"Установка крана / заміна змішувача", p:400, u:"шт", t:"pcs"},
+    {n:"Демонтаж бачка унітазу", p:300, u:"шт", t:"pcs"},
+    {n:"Заміна гофри на унітазі", p:300, u:"шт", t:"pcs"},
+    {n:"Монтаж штанги для душу", p:300, u:"шт", t:"pcs"},
+    {n:"Демонтаж / заміна раковини", p:500, u:"шт", t:"pcs"},
+    {n:"Закріпити раковину на стіну", p:500, u:"шт", t:"pcs"},
+    {n:"Установка сифона", p:300, u:"шт", t:"pcs"},
+    {n:"Установка акрилової ванни", p:1000, u:"шт", t:"pcs"},
+    {n:"Установка сталевої ванни", p:1000, u:"шт", t:"pcs"},
+    {n:"Демонтаж акрилової / сталевої ванни", p:650, u:"шт", t:"pcs"},
+    {n:"Установка бойлера (без врізки в стіну)", p:1000, u:"шт", t:"pcs"},
+  ]},
+  {cat:"Малярні та шпалерні роботи", items:[
+    {n:"Фарбування стелі валиком", p:150, u:"м²", t:"flat", coats:2},
+    {n:"Фарбування стін водоемульсійною", p:150, u:"м²", t:"wall", coats:2},
+    {n:"Фарбування стін в контрастний колір (3–4 шари)", p:160, u:"м²", t:"wall"},
+    {n:"Фарбування шпалер на стінах", p:120, u:"м²", t:"wall", coats:2},
+    {n:"Поклейка флізелінових шпалер (без підбору малюнка)", p:200, u:"м²", t:"wall"},
+    {n:"Поклейка флізелінових шпалер (з підбором малюнка)", p:200, u:"м²", t:"wall"},
+    {n:"Поклейка вінілових шпалер на стіни", p:200, u:"м²", t:"wall"},
+    {n:"Поклейка малярного склополотна", p:200, u:"м²", t:"wall"},
+    {n:"Видалення старих шпалер зі стін", p:100, u:"м²", t:"wall"},
+    {n:"Ґрунтовка стін (1 шар)", p:30, u:"м²", t:"wall"},
+    {n:"Ґрунтовка стелі (1 шар)", p:30, u:"м²", t:"flat"},
+    {n:"Ґрунтовка стелі в 2 шари", p:60, u:"м²", t:"flat"},
+    {n:"Облаштування малярної сітки", p:150, u:"м²", t:"wall", prep:true},
+    {n:"Шліфування стін", p:70, u:"м²", t:"wall", prep:true},
+    {n:"Шліфування стелі", p:80, u:"м²", t:"flat", prep:true},
+    {n:"Фарбування трубопроводу", p:50, u:"м.п.", t:"len"},
+    {n:"Фарбування багетів", p:150, u:"м.п.", t:"len"},
+    {n:"Фарбування відкосів", p:130, u:"м.п.", t:"len"},
+    {n:"Пінопластовий стельовий багет (до 80 мм)", p:85, u:"м.п.", t:"len"},
+    {n:"Поліуретановий стельовий багет (до 100 мм)", p:140, u:"м.п.", t:"len"},
+    {n:"Монтаж молдингів / багетів (до 80 мм)", p:150, u:"м.п.", t:"len"},
+    {n:"Монтаж молдингів / багетів (80–100 мм)", p:180, u:"м.п.", t:"len"},
+    {n:"Шпаклівка + фарбування багета (поліуретан)", p:140, u:"м.п.", t:"len"},
+    {n:"Шпаклівка + фарбування багета (пінопласт)", p:130, u:"м.п.", t:"len"},
+  ]},
+  {cat:"Штукатурка та шпаклівка", items:[
+    {n:"Шпаклівка стін під фарбування", p:180, u:"м²", t:"wall", prep:true},
+    {n:"Шпаклівка стелі під фарбування", p:250, u:"м²", t:"flat", prep:true},
+    {n:"Шпаклівка стін під поклейку шпалер", p:130, u:"м²", t:"wall", prep:true},
+    {n:"Шпаклівка стелі під поклейку шпалер", p:130, u:"м²", t:"flat", prep:true},
+    {n:"Фінішна шпаклівка стін", p:120, u:"м²", t:"wall", prep:true},
+    {n:"Шпаклівка стін з ГК під шпалери", p:150, u:"м²", t:"wall", prep:true},
+    {n:"Шпаклівка стін з ГК під фарбування", p:150, u:"м²", t:"wall", prep:true},
+    {n:"Шпаклівка стелі з ГК під фарбування", p:200, u:"м²", t:"flat", prep:true},
+    {n:"Шпаклівка укосів під фарбування", p:140, u:"м²", t:"len", prep:true},
+    {n:"Шпаклівка гіпсокартонного короба (2 сторони)", p:150, u:"м.п.", t:"len", prep:true},
+    {n:"Ручна штукатурка ніш під радіатори (під ключ)", p:400, u:"м.п.", t:"len", prep:true},
+    {n:"Ґрунтовка укосів", p:25, u:"м.п.", t:"len"},
+  ]},
+  {cat:"Гіпсокартон", items:[
+    {n:"Монтаж гіпсокартону на стіну", p:160, u:"м²", t:"wall"},
+    {n:"Монтаж гіпсокартону на стелю", p:180, u:"м²", t:"flat"},
+    {n:"Обшивка труб гіпсокартоном", p:200, u:"м²", t:"flat"},
+    {n:"Монтаж укосів з гіпсокартону", p:220, u:"м.п.", t:"len"},
+    {n:"Утеплення гіпсокартону мінватою", p:75, u:"м²", t:"wall"},
+    {n:"Утеплення гіпсокартону Стіродур", p:80, u:"м²", t:"wall"},
+  ]},
+  {cat:"Плитка", items:[
+    {n:"Укладання плитки на підлогу 40×40", p:480, u:"м²", t:"flat"},
+    {n:"Укладання плитки на підлогу 60×60", p:750, u:"м²", t:"flat"},
+    {n:"Укладання плитки на стіни (проста укладка)", p:500, u:"м²", t:"wall"},
+    {n:"Укладання плитки «кабанчик»", p:400, u:"м.п.", t:"len"},
+    {n:"Декоративна гіпсова плитка", p:360, u:"м²", t:"wall"},
+    {n:"Поклейка гіпсової цеглинки на стіни", p:400, u:"м²", t:"wall"},
+    {n:"Ґрунтовка стяжки під плитку", p:30, u:"м²", t:"flat"},
+    {n:"Установка куточків при укладанні плитки", p:90, u:"м.п.", t:"len"},
+    {n:"Затирка швів плитки", p:100, u:"м.п.", t:"len"},
+    {n:"Затирка швів (напівсуха)", p:135, u:"м.п.", t:"len"},
+    {n:"Отвір в плитці під розетку або трубу", p:220, u:"шт", t:"pcs"},
+    {n:"Запил і шліфування крайок під 45°", p:320, u:"м.п.", t:"len"},
+    {n:"Монтаж керамічних плінтусів", p:180, u:"м.п.", t:"len"},
+    {n:"Ревізійний люк з плитки на магнітах (виготовлення+монтаж)", p:800, u:"шт", t:"pcs"},
+    {n:"Облицювання плиткою укосу / підвіконня", p:450, u:"м.п.", t:"len"},
+    {n:"Облицювання плиткою короба", p:450, u:"м.п.", t:"len"},
+  ]},
+  {cat:"Підлогові роботи", items:[
+    {n:"Укладання ламінату", p:170, u:"м²", t:"flat"},
+    {n:"Підкладка під ламінат", p:20, u:"м²", t:"flat"},
+    {n:"Укладання лінолеуму", p:80, u:"м²", t:"flat"},
+    {n:"Укладання ковроліну", p:80, u:"м²", t:"flat"},
+    {n:"Чорнова підлога з фанери / OSB", p:120, u:"м²", t:"flat"},
+    {n:"Чистова стяжка (залежно від товщини)", p:350, u:"м²", t:"flat"},
+    {n:"Самовирівнююча стяжка підлоги", p:150, u:"м²", t:"flat"},
+    {n:"Демонтаж стяжки підлоги", p:70, u:"м²", t:"flat"},
+    {n:"Утеплення підлоги пінопластом", p:100, u:"м²", t:"flat"},
+    {n:"Ґрунтовка підлоги", p:30, u:"м²", t:"flat"},
+    {n:"Плінтус пластиковий", p:60, u:"м.п.", t:"len"},
+    {n:"Плінтус дерев'яний / МДФ", p:70, u:"м.п.", t:"len"},
+    {n:"Плінтус поліуретановий", p:80, u:"м.п.", t:"len"},
+    {n:"Монтаж декоративних порогів", p:100, u:"м.п.", t:"len"},
+  ]},
+  {cat:"Меблі — збірка", items:[
+    {n:"Складання тумбочки", p:400, u:"шт", t:"pcs"},
+    {n:"Складання трюмо", p:650, u:"шт", t:"pcs"},
+    {n:"Складання туалетного столика", p:550, u:"шт", t:"pcs"},
+    {n:"Складання кухонного столу", p:500, u:"шт", t:"pcs"},
+    {n:"Складання столу з тумбою", p:600, u:"шт", t:"pcs"},
+    {n:"Складання дивана", p:600, u:"шт", t:"pcs"},
+    {n:"Складання книжкової шафи", p:700, u:"шт", t:"pcs"},
+    {n:"Складання корпусної шафи", p:800, u:"шт", t:"pcs"},
+    {n:"Складання шафи з дверцятами", p:720, u:"шт", t:"pcs"},
+    {n:"Складання одномісного ліжка", p:650, u:"шт", t:"pcs"},
+    {n:"Складання двомісного ліжка", p:800, u:"шт", t:"pcs"},
+    {n:"Складання дитячого ліжечка", p:550, u:"шт", t:"pcs"},
+    {n:"Складання дитячої кімнати", p:960, u:"шт", t:"pcs"},
+    {n:"Шафа-купе (1–2 двері)", p:800, u:"шт", t:"pcs"},
+    {n:"Шафа-купе (3 двері)", p:960, u:"шт", t:"pcs"},
+    {n:"Шафа-купе (4 двері)", p:1200, u:"шт", t:"pcs"},
+    {n:"Комод (тільки ящики)", p:650, u:"шт", t:"pcs"},
+    {n:"Комод (ящики і двері)", p:750, u:"шт", t:"pcs"},
+    {n:"Меблева стінка / гірка", p:960, u:"шт", t:"pcs"},
+    {n:"Складання передпокою", p:800, u:"шт", t:"pcs"},
+    {n:"Складання гардеробної", p:750, u:"шт", t:"pcs"},
+    {n:"М'який кухонний куточок", p:700, u:"шт", t:"pcs"},
+    {n:"Складання і установка стінки", p:700, u:"шт", t:"pcs"},
+    {n:"Складання шухляди", p:300, u:"шт", t:"pcs"},
+  ]},
+  {cat:"Домашній майстер", items:[
+    {n:"Установка стельових карнизів", p:300, u:"шт", t:"pcs"},
+    {n:"Навішування дзеркал", p:300, u:"шт", t:"pcs"},
+    {n:"Монтаж дзеркала з підсвічуванням", p:400, u:"шт", t:"pcs"},
+    {n:"Навішування полиці на цегляну стіну", p:300, u:"шт", t:"pcs"},
+    {n:"Установка настінної сушарки для білизни", p:300, u:"шт", t:"pcs"},
+  ]},
+  {cat:"Пластикові вікна", items:[
+    {n:"Демонтаж старого дерев'яного вікна", p:400, u:"шт", t:"pcs"},
+    {n:"Демонтаж старого металопластикового вікна", p:600, u:"шт", t:"pcs"},
+    {n:"Підготовка віконного отвору під монтаж", p:250, u:"шт", t:"pcs"},
+    {n:"Монтаж одностулкового вікна", p:500, u:"шт", t:"pcs"},
+    {n:"Монтаж двостулкового вікна", p:700, u:"шт", t:"pcs"},
+    {n:"Монтаж тристулкового вікна", p:900, u:"шт", t:"pcs"},
+    {n:"Регулювання стулки вікна (просте)", p:150, u:"шт", t:"pcs"},
+    {n:"Регулювання стулки з розпакуванням", p:350, u:"шт", t:"pcs"},
+    {n:"Заміна віконного ущільнювача", p:90, u:"м.п.", t:"len"},
+    {n:"Заміна / установка віконної ручки", p:100, u:"шт", t:"pcs"},
+    {n:"Ручка з замком (захист від дітей)", p:150, u:"шт", t:"pcs"},
+    {n:"Заміна віконних петель (комплект на стулку)", p:400, u:"шт", t:"pcs"},
+    {n:"Підвіконня пластикове (до 400 мм)", p:250, u:"м.п.", t:"len"},
+    {n:"Підвіконня пластикове (від 400 мм)", p:350, u:"м.п.", t:"len"},
+    {n:"Установка зовнішнього відливу", p:200, u:"м.п.", t:"len"},
+    {n:"Монтаж москітної сітки", p:100, u:"шт", t:"pcs"},
+    {n:"Герметизація шва (піна + стиз/силікон)", p:120, u:"м.п.", t:"len"},
+  ]},
+];
+
+/* готові модифікатори кімнати: scope "prep" — тільки підготовчі, "all" — всі роботи */
+const MODS = [
+  {name:"Криві стіни", pct:5, scope:"prep"},
+  {name:"Дуже криві стіни", pct:10, scope:"prep"},
+  {name:"Складний доступ / меблі", pct:10, scope:"all"},
+  {name:"Терміновість", pct:15, scope:"all"},
+];
+
+const HIGH_CEIL = 3, HIGH_SURCHARGE = 25;   // висота > 3 м → +25 грн/м² до стін
+const STATUSES = ["Прорахунок","В роботі","Завершено"];
+const COMPANY = {name:"VostrumBud", phone:"", note:"Ціни дійсні 14 днів. Вартість матеріалів не включена."};
+
+/* ---------- сховище ---------- */
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const uid = ()=> Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const fmt = n => (Math.round(n*100)/100).toLocaleString("uk-UA");
+
+/* ---------- тема ---------- */
+const root = document.documentElement;
+function applyTheme(t){ root.setAttribute("data-theme", t); store.set("vb_theme", t); }
+let sysDark = false;
+try{ sysDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches; }catch(e){}
+applyTheme(store.get("vb_theme") || (sysDark ? "dark" : "light"));
+
+/* ---------- стан ---------- */
+let data = store.get("vb_data") || {clients:[]};
+if(!data.clients.length){
+  data.clients.push({id:uid(), name:"Новий клієнт", phone:"", address:"", status:0, discount:0, rooms:[]});
+}
+let view = {clientId: data.clients[0].id, roomId: null};
+const save = ()=> store.set("vb_data", data);
+const client = ()=> data.clients.find(c=>c.id===view.clientId) || data.clients[0];
+const room = ()=> client().rooms.find(r=>r.id===view.roomId);
+
+const newRoom = (name)=>({id:uid(), name:name||"Кімната", d:{l:"",w:"",h:""}, notes:"", ops:[], works:[], mods:[]});
+const newWork = ()=>({w:null, manual:""});
+/* міграція старих даних */
+data.clients.forEach(c=>c.rooms.forEach(rm=>{
+  if(!rm.d) rm.d={l:"",w:"",h:""};
+  if(!rm.ops) rm.ops=[];
+  if(parseFloat(rm.openings)>0){ rm.ops.push({name:"Прорізи", w:"", h:"", a:parseFloat(rm.openings)}); rm.openings=""; }
+  rm.works.forEach(wk=>{ if(wk.manual===undefined) wk.manual=""; });
+}));
+/* сумарна площа прорізів кімнати */
+function opsArea(rm){
+  return (rm.ops||[]).reduce((s,o)=> s + (o.a? o.a : (parseFloat(o.w)||0)*(parseFloat(o.h)||0)), 0);
+}
+
+/* ---------- розрахунки ---------- */
+function qtyOf(rm, wk){
+  if(!wk.w) return 0;
+  if(parseFloat(wk.manual)>0) return parseFloat(wk.manual);   // ручний обсяг має пріоритет
+  const l=parseFloat(rm.d.l)||0, w=parseFloat(rm.d.w)||0, h=parseFloat(rm.d.h)||0;
+  switch(wk.w.t){
+    case "wall":{
+      if(!(l>0&&w>0&&h>0)) return 0;
+      return Math.max(0, 2*(l+w)*h - opsArea(rm));
+    }
+    case "flat": return (l>0&&w>0)? l*w : 0;
+    case "len": return (l>0&&w>0)? 2*(l+w) : 0;   // периметр (плінтус тощо)
+    case "pcs": return 1;                          // штучні роботи: 1 шт, більше — вручну
+  }
+  return 0;
+}
+function unitPrice(rm, wk){
+  if(!wk.w) return 0;
+  let p = wk.w.p * (wk.w.coats||1);
+  const h = parseFloat(rm.d.h)||0;
+  if(wk.w.t==="wall" && h>HIGH_CEIL) p += HIGH_SURCHARGE;
+  return p;
+}
+function modMult(rm, wk){
+  let m = 1;
+  rm.mods.forEach(md=>{
+    if(md.scope==="all" || (md.scope==="prep" && wk.w && wk.w.prep)) m *= (1+md.pct/100);
+  });
+  return m;
+}
+function workSum(rm, wk){ return qtyOf(rm,wk)*unitPrice(rm,wk)*modMult(rm,wk); }
+function roomSum(rm){ return rm.works.reduce((a,wk)=>a+workSum(rm,wk),0); }
+function clientSubtotal(c){ return c.rooms.reduce((a,rm)=>a+roomSum(rm),0); }
+function clientTotal(c){ return clientSubtotal(c)*(1+(parseFloat(c.discount)||0)/100); }
+function priceNote(rm, wk){
+  const parts=[];
+  if(wk.w.coats) parts.push("2 шари");
+  const h=parseFloat(rm.d.h)||0;
+  if(wk.w.t==="wall"&&h>HIGH_CEIL) parts.push(`+${HIGH_SURCHARGE} грн/м² висота`);
+  const mm = modMult(rm,wk);
+  if(mm!==1) parts.push(`модиф. ×${(Math.round(mm*1000)/1000)}`);
+  if(parseFloat(wk.manual)>0) parts.push("обсяг вручну");
+  return parts.length? ` (${parts.join(", ")})` : "";
+}
+
+/* =====================================================================
+   РЕНДЕР
+   ===================================================================== */
+const app = document.getElementById("app");
+const footer = document.getElementById("footer");
+const overlay = document.getElementById("overlay");
+const drawer = document.getElementById("drawer");
+const sheet = document.getElementById("sheet");
+
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+/* ---------- власні діалоги (prompt/confirm/alert блокуються в WebView) ---------- */
+function askText(title, placeholder, initial, cb){
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 10px">${esc(title)}</div>
+    <input class="search" id="dlgInput" placeholder="${esc(placeholder)}" value="${esc(initial||"")}">
+    <div style="display:flex;gap:8px;padding:12px 0 16px">
+      <button class="btn ghost" style="flex:1" id="dlgCancel">Скасувати</button>
+      <button class="btn" style="flex:1" id="dlgOk">Готово</button>
+    </div></div>`;
+  const inp=sheet.querySelector("#dlgInput");
+  const done=()=>{ const v=inp.value.trim(); closeAll(); if(v) cb(v); };
+  sheet.querySelector("#dlgOk").onclick=done;
+  inp.onkeydown=e=>{ if(e.key==="Enter") done(); };
+  sheet.querySelector("#dlgCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+  setTimeout(()=>{ inp.focus(); inp.select(); },250);
+}
+function askConfirm(msg, cb){
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:700;padding:0 4px 14px;line-height:1.4">${esc(msg)}</div>
+    <div style="display:flex;gap:8px;padding:0 0 16px">
+      <button class="btn ghost" style="flex:1" id="dlgCancel">Скасувати</button>
+      <button class="btn" style="flex:1;background:var(--danger);color:#fff" id="dlgOk">Видалити</button>
+    </div></div>`;
+  sheet.querySelector("#dlgOk").onclick=()=>{ closeAll(); cb(); };
+  sheet.querySelector("#dlgCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+}
+let toastTimer=null;
+function toast(msg){
+  let t=document.getElementById("vbToast");
+  if(!t){
+    t=document.createElement("div"); t.id="vbToast";
+    t.style.cssText="position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:12px;font-size:.85rem;font-weight:600;z-index:40;box-shadow:var(--shadow);max-width:86%;text-align:center;transition:opacity .25s";
+    document.body.appendChild(t);
+  }
+  t.textContent=msg; t.style.opacity="1";
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{ t.style.opacity="0"; },2200);
+}
+
+function topbar(title, sub, backFn){
+  const el = document.createElement("div");
+  el.className = "topbar";
+  el.innerHTML = `
+    <button class="icon-btn" id="navBtn">${backFn?"←":"☰"}</button>
+    <div class="title"><b>${title}</b><small>${sub}</small></div>
+    <button class="icon-btn" id="themeBtn">◐</button>`;
+  el.querySelector("#navBtn").onclick = backFn || openDrawer;
+  el.querySelector("#themeBtn").onclick = ()=> applyTheme(root.getAttribute("data-theme")==="dark"?"light":"dark");
+  return el;
+}
+
+/* ---------- ЕКРАН КЛІЄНТА ---------- */
+function renderClient(){
+  const c = client();
+  view.roomId = null;
+  app.innerHTML = "";
+  app.appendChild(topbar(`Vostrum<span>Bud</span>`, "кошторис робіт"));
+
+  const info = document.createElement("div");
+  info.className = "card";
+  info.innerHTML = `
+    <div class="fld"><label>Клієнт / назва об'єкта</label>
+      <input id="cName" value="${esc(c.name)}" placeholder="Ім'я клієнта"></div>
+    <div class="grid2">
+      <div class="fld"><label>Телефон</label><input id="cPhone" inputmode="tel" value="${esc(c.phone)}" placeholder="+380…"></div>
+      <div class="fld"><label>Знижка / націнка, %</label><input id="cDisc" class="num" inputmode="numeric" type="number" step="1" value="${c.discount||""}" placeholder="0"></div>
+    </div>
+    <div class="fld"><label>Адреса об'єкта</label><input id="cAddr" value="${esc(c.address)}" placeholder="вул. …"></div>
+    <span class="chip st${c.status}" id="cStatus">● ${STATUSES[c.status]}</span>`;
+  info.querySelector("#cName").oninput = e=>{ c.name=e.target.value; save(); };
+  info.querySelector("#cPhone").oninput = e=>{ c.phone=e.target.value; save(); };
+  info.querySelector("#cAddr").oninput = e=>{ c.address=e.target.value; save(); };
+  info.querySelector("#cDisc").oninput = e=>{ c.discount=e.target.value; save(); updateFooter(); };
+  info.querySelector("#cStatus").onclick = e=>{
+    c.status=(c.status+1)%3; save();
+    e.target.className=`chip st${c.status}`; e.target.textContent=`● ${STATUSES[c.status]}`;
+  };
+  app.appendChild(info);
+
+  const st = document.createElement("div");
+  st.className="sec-title"; st.textContent="Кімнати / приміщення";
+  app.appendChild(st);
+
+  if(!c.rooms.length){
+    const em=document.createElement("div"); em.className="empty";
+    em.textContent="Додай першу кімнату — кухня, ванна, спальня…";
+    app.appendChild(em);
+  }
+  c.rooms.forEach((rm,i)=>{
+    const el=document.createElement("div");
+    el.className="card item";
+    el.innerHTML=`
+      <div class="info">
+        <b>${esc(rm.name)}</b>
+        <small>${rm.works.filter(w=>w.w).length} робіт${rm.mods.length?` · ${rm.mods.map(m=>m.name).join(", ")}`:""}</small>
+      </div>
+      <span class="sum">${fmt(roomSum(rm))} грн</span>
+      <button class="mini" title="Дублювати">⧉</button>
+      <button class="mini danger" title="Видалити">✕</button>`;
+    el.querySelector(".info").onclick=()=>{ view.roomId=rm.id; renderRoom(); };
+    el.querySelector(".mini").onclick=()=>{
+      const copy=JSON.parse(JSON.stringify(rm)); copy.id=uid(); copy.name=rm.name+" (копія)";
+      c.rooms.splice(i+1,0,copy); save(); renderClient();
+    };
+    el.querySelector(".danger").onclick=()=>{
+      askConfirm(`Видалити «${rm.name}»?`,()=>{ c.rooms.splice(i,1); save(); renderClient(); });
+    };
+    app.appendChild(el);
+  });
+
+  const add=document.createElement("button");
+  add.className="add-btn"; add.textContent="+ Додати кімнату";
+  add.onclick=()=>{
+    askText("Нова кімната","Кухня, ванна, спальня…","Кімната "+(c.rooms.length+1),(name)=>{
+      const rm=newRoom(name);
+      c.rooms.push(rm); save();
+      view.roomId=rm.id; renderRoom();
+    });
+  };
+  app.appendChild(add);
+
+  footer.innerHTML=`<div class="footer-inner"><div class="footer-row">
+    <div class="total"><small>Разом по об'єкту${(parseFloat(c.discount)||0)?` (з ${c.discount}%)`:""}</small>
+      <b id="fTotal">${fmt(clientTotal(c))} <i>грн</i></b></div>
+    <button class="btn ghost" id="btnTxt">Текст</button>
+    <button class="btn" id="btnPdf">PDF</button>
+  </div></div>`;
+  document.getElementById("btnPdf").onclick=exportPdf;
+  document.getElementById("btnTxt").onclick=copyText;
+}
+
+/* ---------- ЕКРАН КІМНАТИ ---------- */
+function renderRoom(){
+  const c=client(), rm=room();
+  if(!rm){ renderClient(); return; }
+  app.innerHTML="";
+  app.appendChild(topbar(esc(rm.name), esc(c.name), ()=>renderClient()));
+
+  /* --- назва + розміри --- */
+  const info=document.createElement("div");
+  info.className="card";
+  info.innerHTML=`
+    <div class="fld"><label>Назва кімнати</label><input id="rName" value="${esc(rm.name)}"></div>
+    <div class="grid3">
+      <div class="fld"><label>Довжина, м</label><input id="rL" class="num" type="number" inputmode="decimal" min="0" step="0.01" value="${rm.d.l}" placeholder="0"></div>
+      <div class="fld"><label>Ширина, м</label><input id="rW" class="num" type="number" inputmode="decimal" min="0" step="0.01" value="${rm.d.w}" placeholder="0"></div>
+      <div class="fld"><label>Висота, м</label><input id="rH" class="num" type="number" inputmode="decimal" min="0" step="0.01" value="${rm.d.h}" placeholder="0"></div>
+    </div>
+    <div class="row-sum" id="rmArea" style="margin:0;text-align:left"></div>`;
+  const showArea=()=>{
+    const l=parseFloat(rm.d.l)||0,w=parseFloat(rm.d.w)||0,h=parseFloat(rm.d.h)||0;
+    const open=opsArea(rm);
+    const box=info.querySelector("#rmArea");
+    if(l>0&&w>0){
+      let s=`Підлога/стеля: <b>${fmt(l*w)} м²</b> · Периметр: <b>${fmt(2*(l+w))} м.п.</b>`;
+      if(h>0) s+=` · Стіни: <b>${fmt(Math.max(0,2*(l+w)*h-open))} м²</b>${open?` (мінус ${fmt(open)} м²)`:""}`;
+      box.style.display=""; box.innerHTML=s;
+    } else { box.style.display="none"; box.innerHTML=""; }
+  };
+  showArea();
+  info.querySelector("#rName").oninput=e=>{ rm.name=e.target.value; save(); };
+  ["rL","rW","rH"].forEach((id,ix)=>{
+    info.querySelector("#"+id).oninput=e=>{
+      rm.d[["l","w","h"][ix]]=e.target.value; save();
+      showArea(); updateWorkSums(rm); updateFooter();
+    };
+  });
+  app.appendChild(info);
+
+  /* --- прорізи (вікна/двері) --- */
+  const ot=document.createElement("div");
+  ot.className="sec-title";
+  ot.innerHTML=`Прорізи — вікна / двері <button class="mini" style="width:auto;color:var(--accent)" id="addOp">+ додати</button>`;
+  app.appendChild(ot);
+  const opsBox=document.createElement("div");
+  opsBox.className="mods"; opsBox.id="opChips";
+  app.appendChild(opsBox);
+  function renderOpChips(){
+    opsBox.innerHTML = rm.ops.length? "" : `<span style="color:var(--muted);font-size:.82rem">немає — стіни рахуються повністю</span>`;
+    rm.ops.forEach((o,i)=>{
+      const a = o.a? o.a : (parseFloat(o.w)||0)*(parseFloat(o.h)||0);
+      const s=document.createElement("span");
+      s.className="mod-chip";
+      s.innerHTML=`${esc(o.name)}${o.dims?` ${o.dims} м`:(o.a?"":` ${o.w}×${o.h} м`)} = ${fmt(a)} м² <i>✕</i>`;
+      s.querySelector("i").onclick=()=>{
+        rm.ops.splice(i,1); save(); renderOpChips(); showArea(); updateWorkSums(rm); updateFooter();
+      };
+      opsBox.appendChild(s);
+    });
+  }
+  renderOpChips();
+  ot.querySelector("#addOp").onclick=()=>openOpSheet(rm, ()=>{ renderOpChips(); showArea(); updateWorkSums(rm); updateFooter(); });
+
+  /* --- роботи (головне) --- */
+  const wt=document.createElement("div");
+  wt.className="sec-title"; wt.textContent="Роботи по кімнаті";
+  app.appendChild(wt);
+
+  const addW=document.createElement("button");
+  addW.className="btn"; addW.style.cssText="width:100%;margin-bottom:10px;padding:14px";
+  addW.textContent="＋ Обрати роботу з прайсу";
+  addW.onclick=()=>{
+    rm.works.push(newWork()); save();
+    renderRoom();
+    setTimeout(()=>openWorkSheet(rm, rm.works.length-1),50);
+  };
+  app.appendChild(addW);
+
+  const list=document.createElement("div"); list.id="workList";
+  app.appendChild(list);
+  rm.works.forEach((wk,i)=> list.appendChild(workRow(rm,wk,i)));
+  if(!rm.works.length){
+    const em=document.createElement("div"); em.className="empty";
+    em.textContent="Натисни кнопку вище — відкриється прайс, вибери роботу, і вона порахується з розмірів кімнати.";
+    list.appendChild(em);
+  }
+
+  /* --- модифікатори --- */
+  const mt=document.createElement("div");
+  mt.className="sec-title";
+  mt.innerHTML=`Модифікатори ціни <button class="mini" style="width:auto;color:var(--accent)" id="addMod">+ додати</button>`;
+  app.appendChild(mt);
+  const mods=document.createElement("div");
+  mods.className="mods"; mods.id="modChips";
+  app.appendChild(mods);
+  renderModChips(rm);
+  mt.querySelector("#addMod").onclick=()=>openModSheet(rm);
+
+  /* --- нотатки --- */
+  const nt=document.createElement("div");
+  nt.className="card";
+  nt.innerHTML=`<div class="fld" style="margin:0"><label>Нотатки (не йдуть у PDF)</label>
+    <textarea id="rNotes" placeholder="стіни криві, треба маяки…">${esc(rm.notes)}</textarea></div>`;
+  nt.querySelector("#rNotes").oninput=e=>{ rm.notes=e.target.value; save(); };
+  app.appendChild(nt);
+
+  footer.innerHTML=`<div class="footer-inner"><div class="footer-row">
+    <div class="total"><small>Разом: ${esc(rm.name)}</small><b id="fTotal">${fmt(roomSum(rm))} <i>грн</i></b></div>
+    <button class="btn" id="btnBack">Готово</button>
+  </div></div>`;
+  document.getElementById("btnBack").onclick=()=>renderClient();
+}
+
+/* спливаюче вікно додавання прорізу: назва + ширина + висота */
+function openOpSheet(rm, after){
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 10px">Додати проріз</div>
+    <input class="search" id="opName" placeholder="Двері, вікно, арка…" style="margin-bottom:8px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div class="fld" style="margin:0"><label>Ширина, м</label>
+        <input class="search num" id="opW" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.9"></div>
+      <div class="fld" style="margin:0"><label>Висота, м</label>
+        <input class="search num" id="opH" type="number" inputmode="decimal" min="0" step="0.01" placeholder="2.05"></div>
+      <div class="fld" style="margin:0"><label>Довжина, м</label>
+        <input class="search num" id="opL" type="number" inputmode="decimal" min="0" step="0.01" placeholder="—"></div>
+    </div>
+    <div class="row-sum" id="opArea" style="text-align:left;margin-top:6px"></div>
+    <div style="display:flex;gap:8px;padding:12px 0 16px">
+      <button class="btn ghost" style="flex:1" id="opCancel">Скасувати</button>
+      <button class="btn" style="flex:1" id="opOk">Додати</button>
+    </div></div>`;
+  const nameI=sheet.querySelector("#opName"), wI=sheet.querySelector("#opW"), hI=sheet.querySelector("#opH"), lI=sheet.querySelector("#opL");
+  const areaBox=sheet.querySelector("#opArea");
+  const calcOp=()=>{
+    const vals=[wI.value,hI.value,lI.value].map(v=>parseFloat(v)).filter(v=>v>0);
+    return vals.length>=2 ? vals.reduce((a,v)=>a*v,1) : 0;
+  };
+  const upd=()=>{
+    const a=calcOp();
+    areaBox.innerHTML = a>0? `= <b>${fmt(a)} м²</b> буде віднято від площі стін` : `<span style="color:var(--muted)">впиши хоча б два розміри</span>`;
+  };
+  wI.oninput=upd; hI.oninput=upd; lI.oninput=upd;
+  sheet.querySelector("#opOk").onclick=()=>{
+    const a=calcOp();
+    if(!(a>0)){ toast("Впиши хоча б два розміри прорізу."); return; }
+    const dims=[wI.value,hI.value,lI.value].filter(v=>parseFloat(v)>0).join("×");
+    rm.ops.push({name:nameI.value.trim()||"Проріз", w:"", h:"", a:a, dims:dims});
+    save(); closeAll(); if(after) after();
+  };
+  sheet.querySelector("#opCancel").onclick=closeAll;
+  overlay.classList.add("open"); sheet.classList.add("open");
+  setTimeout(()=>nameI.focus(),250);
+}
+
+function renderModChips(rm){
+  const box=document.getElementById("modChips");
+  if(!box) return;
+  box.innerHTML = rm.mods.length? "" : `<span style="color:var(--muted);font-size:.82rem">немає — звичайні умови</span>`;
+  rm.mods.forEach((md,i)=>{
+    const s=document.createElement("span");
+    s.className="mod-chip";
+    s.innerHTML=`${esc(md.name)} +${md.pct}% <i>✕</i>`;
+    s.querySelector("i").onclick=()=>{
+      rm.mods.splice(i,1); save(); renderModChips(rm); updateWorkSums(rm); updateFooter();
+    };
+    box.appendChild(s);
+  });
+}
+
+function workRow(rm, wk, idx){
+  const el=document.createElement("div");
+  el.className="card";
+  el.innerHTML=`
+    <div class="row-top">
+      <button class="work-btn ${wk.w?"":"placeholder"}">
+        ${wk.w? esc(wk.w.n)+`<span class="unit-tag">${wk.w.p*(wk.w.coats||1)} грн/${wk.w.u}${wk.w.coats?" · 2 шари":""}</span>` : "Обрати роботу…"}
+      </button>
+      <button class="mini danger">✕</button>
+    </div>
+    ${wk.w?`<div class="dims c1" style="margin-top:8px">
+      <div class="fld" style="margin:0"><label>${wk.w.t==="pcs"?"Кількість, шт (порожньо = 1)":"Обсяг вручну, "+wk.w.u+" (порожньо = з розмірів кімнати)"}</label>
+        <input type="number" class="num" inputmode="decimal" min="0" step="0.01" id="wManual" placeholder="${wk.w.t==="pcs"?"1":"авто"}" value="${wk.manual}">
+      </div></div>`:""}
+    <div class="row-sum" style="display:none"></div>`;
+  el.querySelector(".work-btn").onclick=()=>openWorkSheet(rm, idx);
+  const man=el.querySelector("#wManual");
+  if(man) man.oninput=()=>{ wk.manual=man.value; save(); refreshWorkSum(el,rm,wk); updateFooter(); };
+  el.querySelector(".danger").onclick=()=>{
+    rm.works.splice(idx,1); save(); renderRoom();
+  };
+  refreshWorkSum(el,rm,wk);
+  return el;
+}
+function refreshWorkSum(el,rm,wk){
+  const s=el.querySelector(".row-sum");
+  const q=qtyOf(rm,wk);
+  if(wk.w&&q>0){
+    s.style.display="";
+    s.innerHTML=`${fmt(q)} ${wk.w.u} × ${fmt(unitPrice(rm,wk))} грн${priceNote(rm,wk)} = <b>${fmt(workSum(rm,wk))}</b> грн`;
+  } else if(wk.w){
+    s.style.display="";
+    s.innerHTML=`<span style="color:var(--muted)">впиши розміри кімнати вище або обсяг вручну</span>`;
+  } else s.style.display="none";
+}
+function updateWorkSums(rm){
+  const list=document.getElementById("workList");
+  if(!list) return;
+  [...list.children].forEach((el,i)=>{
+    if(rm.works[i]) refreshWorkSum(el,rm,rm.works[i]);
+  });
+}
+function updateFooter(){
+  const t=document.getElementById("fTotal");
+  if(!t) return;
+  t.innerHTML = (view.roomId? fmt(roomSum(room())) : fmt(clientTotal(client()))) + " <i>грн</i>";
+}
+
+/* =====================================================================
+   DRAWER — клієнти
+   ===================================================================== */
+function openDrawer(){
+  drawer.innerHTML=`<h3>Vostrum<span>Bud</span></h3><div class="drawer-list" id="clList"></div>
+    <button class="add-btn" style="margin:8px 0 0">+ Новий клієнт</button>`;
+  const list=drawer.querySelector("#clList");
+  data.clients.forEach((c,i)=>{
+    const el=document.createElement("div");
+    el.className="cl-item"+(c.id===view.clientId?" active":"");
+    el.innerHTML=`<div class="info"><b>${esc(c.name)}</b>
+      <small>${STATUSES[c.status]} · ${fmt(clientTotal(c))} грн</small></div>
+      <button class="mini danger">✕</button>`;
+    el.querySelector(".info").onclick=()=>{ view.clientId=c.id; closeAll(); renderClient(); };
+    el.querySelector(".danger").onclick=(e)=>{
+      e.stopPropagation();
+      askConfirm(`Видалити клієнта «${c.name}» з усіма кімнатами?`,()=>{
+        data.clients.splice(i,1);
+        if(!data.clients.length) data.clients.push({id:uid(),name:"Новий клієнт",phone:"",address:"",status:0,discount:0,rooms:[]});
+        if(view.clientId===c.id) view.clientId=data.clients[0].id;
+        save(); renderClient();
+      });
+    };
+    list.appendChild(el);
+  });
+  drawer.querySelector(".add-btn").onclick=()=>{
+    drawer.classList.remove("open");
+    askText("Новий клієнт","Ім'я клієнта або назва об'єкта","",(name)=>{
+      const c={id:uid(),name,phone:"",address:"",status:0,discount:0,rooms:[]};
+      data.clients.unshift(c); view.clientId=c.id; save();
+      renderClient();
+    });
+  };
+  overlay.classList.add("open");
+  drawer.classList.add("open");
+}
+overlay.onclick=closeAll;
+function closeAll(){
+  overlay.classList.remove("open");
+  drawer.classList.remove("open");
+  sheet.classList.remove("open");
+}
+
+/* =====================================================================
+   SHEET — вибір роботи
+   ===================================================================== */
+function openWorkSheet(rm, idx){
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <input class="search" id="wSearch" placeholder="Почни писати назву роботи…"></div>
+    <div class="sheet-list" id="wList"></div>`;
+  const listEl=sheet.querySelector("#wList");
+  const searchEl=sheet.querySelector("#wSearch");
+  function renderOpts(q){
+    listEl.innerHTML=""; let any=false;
+    PRICE.forEach(g=>{
+      const ms=g.items.filter(it=>!q||it.n.toLowerCase().includes(q));
+      if(!ms.length) return;
+      any=true;
+      const cat=document.createElement("div"); cat.className="cat"; cat.textContent=g.cat;
+      listEl.appendChild(cat);
+      ms.forEach(it=>{
+        const o=document.createElement("div"); o.className="opt";
+        o.innerHTML=`<span>${esc(it.n)}${it.coats?" · 2 шари":""}</span><span class="price">${it.p*(it.coats||1)} грн/${it.u}</span>`;
+        o.onclick=()=>{
+          rm.works[idx].w={...it};
+          rm.works[idx].manual="";
+          save(); closeAll(); renderRoom();
+        };
+        listEl.appendChild(o);
+      });
+    });
+    if(!any) listEl.innerHTML=`<div class="no-match">Нічого не знайдено за «${esc(q)}»</div>`;
+  }
+  searchEl.oninput=()=>renderOpts(searchEl.value.trim().toLowerCase());
+  renderOpts("");
+  overlay.classList.add("open");
+  sheet.classList.add("open");
+  setTimeout(()=>searchEl.focus(),250);
+}
+
+/* SHEET — вибір модифікатора */
+function openModSheet(rm){
+  sheet.innerHTML=`<div class="sheet-head"><div class="grip"></div>
+    <div style="font-weight:800;padding:0 4px 4px">Модифікатор ціни</div></div>
+    <div class="sheet-list">
+      ${MODS.map((m,i)=>`<div class="opt" data-i="${i}">
+        <span>${m.name}<br><small style="color:var(--muted)">${m.scope==="prep"?"до шпаклівки/штукатурки/шліфування":"до всіх робіт кімнати"}</small></span>
+        <span class="price">+${m.pct}%</span></div>`).join("")}
+      <div class="cat">Свій модифікатор</div>
+      <div style="display:grid;grid-template-columns:1fr 84px;gap:8px;padding:6px 10px 16px">
+        <input class="search" id="mName" placeholder="Назва (напр. демонтаж поверх)">
+        <input class="search num" id="mPct" type="number" inputmode="numeric" placeholder="+%">
+      </div>
+      <div style="padding:0 10px 20px"><button class="btn" style="width:100%" id="mAdd">Додати свій (+% до всіх робіт)</button></div>
+    </div>`;
+  sheet.querySelectorAll(".opt").forEach(o=>{
+    o.onclick=()=>{
+      const m=MODS[+o.dataset.i];
+      rm.mods.push({...m}); save(); closeAll();
+      renderModChips(rm); updateWorkSums(rm); updateFooter();
+    };
+  });
+  sheet.querySelector("#mAdd").onclick=()=>{
+    const name=sheet.querySelector("#mName").value.trim();
+    const pct=parseFloat(sheet.querySelector("#mPct").value);
+    if(!name||!pct){ toast("Впиши назву і відсоток."); return; }
+    rm.mods.push({name,pct,scope:"all"}); save(); closeAll();
+    renderModChips(rm); updateWorkSums(rm); updateFooter();
+  };
+  overlay.classList.add("open");
+  sheet.classList.add("open");
+}
+
+/* =====================================================================
+   ЕКСПОРТ
+   ===================================================================== */
+function buildLines(c){
+  const rooms=[];
+  c.rooms.forEach(rm=>{
+    const dimsStr=[rm.d.l,rm.d.w,rm.d.h].filter(Boolean).join("×")+" м";
+    const lines=rm.works.filter(wk=>wk.w&&qtyOf(rm,wk)>0).map(wk=>({
+      n:wk.w.n+(wk.w.coats?" (2 шари)":""),
+      dims:parseFloat(wk.manual)>0? "вручну" : dimsStr,
+      q:qtyOf(rm,wk), u:wk.w.u, p:unitPrice(rm,wk)*modMult(rm,wk), s:workSum(rm,wk)
+    }));
+    if(lines.length) rooms.push({name:rm.name, mods:rm.mods, notes:rm.notes, lines, sum:roomSum(rm)});
+  });
+  return rooms;
+}
+
+function exportPdf(){
+  const c=client();
+  const rooms=buildLines(c);
+  if(!rooms.length){ toast("Немає жодної роботи з розмірами."); return; }
+  const d=new Date().toLocaleDateString("uk-UA");
+  const disc=parseFloat(c.discount)||0;
+  let html=`
+    <div class="p-head">
+      <div class="logo">Vostrum<span>Bud</span><div style="font-size:10px;font-weight:normal;color:#666;letter-spacing:.15em">БУДІВНИЦТВО ТА РЕМОНТ</div></div>
+      <div class="contact">${COMPANY.phone?esc(COMPANY.phone)+"<br>":""}${d}</div>
+    </div>
+    <div class="p-meta">
+      <b>Кошторис робіт</b><br>
+      Замовник: ${esc(c.name)}${c.phone?", тел. "+esc(c.phone):""}<br>
+      ${c.address?"Об'єкт: "+esc(c.address):""}
+    </div>
+    <table class="p-tbl">
+      <tr><th style="width:44%">Робота</th><th>Розміри</th><th>Обсяг</th><th>Ціна, грн</th><th>Сума, грн</th></tr>`;
+  rooms.forEach(rm=>{
+    html+=`<tr class="p-room"><td colspan="4">${esc(rm.name)}${rm.mods.length?` <span class="p-note">(${rm.mods.map(m=>esc(m.name)+" +"+m.pct+"%").join(", ")})</span>`:""}</td>
+      <td class="r">${fmt(rm.sum)}</td></tr>`;
+    rm.lines.forEach(l=>{
+      html+=`<tr><td>${esc(l.n)}</td><td>${l.dims}</td><td class="r">${fmt(l.q)} ${l.u}</td><td class="r">${fmt(l.p)}</td><td class="r">${fmt(l.s)}</td></tr>`;
+    });
+  });
+  html+=`</table>
+    <div class="p-totals">
+      ${disc?`Разом: ${fmt(clientSubtotal(c))} грн<br>${disc<0?"Знижка":"Націнка"} ${Math.abs(disc)}%<br>`:""}
+      <b>До сплати: ${fmt(clientTotal(c))} грн</b>
+    </div>
+    <div class="p-foot">${esc(COMPANY.note)}</div>`;
+  document.getElementById("printArea").innerHTML=html;
+  window.print();
+}
+
+function copyText(){
+  const c=client();
+  const rooms=buildLines(c);
+  if(!rooms.length){ toast("Немає жодної роботи з розмірами."); return; }
+  const disc=parseFloat(c.discount)||0;
+  let t=`VostrumBud — кошторис\nЗамовник: ${c.name}\n${c.address?("Об'єкт: "+c.address+"\n"):""}\n`;
+  rooms.forEach(rm=>{
+    t+=`— ${rm.name.toUpperCase()}${rm.mods.length?` (${rm.mods.map(m=>m.name+" +"+m.pct+"%").join(", ")})`:""}\n`;
+    rm.lines.forEach(l=>{ t+=`  ${l.n}: ${fmt(l.q)} ${l.u} × ${fmt(l.p)} = ${fmt(l.s)} грн\n`; });
+    t+=`  Разом: ${fmt(rm.sum)} грн\n`;
+  });
+  if(disc) t+=`\nРазом: ${fmt(clientSubtotal(c))} грн\n${disc<0?"Знижка":"Націнка"}: ${Math.abs(disc)}%`;
+  t+=`\nДО СПЛАТИ: ${fmt(clientTotal(c))} грн\n\n${COMPANY.note}`;
+  const done=()=>toast("Скопійовано — встав у Viber/Telegram.");
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(done).catch(()=>fallbackCopy(t,done));
+  } else fallbackCopy(t,done);
+}
+function fallbackCopy(t,done){
+  const ta=document.createElement("textarea");
+  ta.value=t; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); done(); }catch(e){ toast("Не вдалося скопіювати"); }
+  ta.remove();
+}
+
+renderClient();
+/* PWA: офлайн-робота і можливість пакування в APK */
+if("serviceWorker" in navigator){
+  try{ navigator.serviceWorker.register("sw.js"); }catch(e){}
+}
+</script>
+</body>
+</html>
